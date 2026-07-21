@@ -1,0 +1,14 @@
+CREATE TABLE IF NOT EXISTS ValueEnum
+(
+    Key        INTEGER PRIMARY KEY AUTOINCREMENT,
+    Value      INTEGER,
+    ParentEnum TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS IdToFile
+(
+    Id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    ParentKey INTEGER,
+    Path      TEXT,
+    FOREIGN KEY (ParentKey) REFERENCES ValueEnum (Key) ON DELETE CASCADE
+)
