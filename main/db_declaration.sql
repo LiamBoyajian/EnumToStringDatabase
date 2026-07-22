@@ -10,6 +10,6 @@ CREATE TABLE IF NOT EXISTS IdToFile
     Id        INTEGER PRIMARY KEY AUTOINCREMENT,
     Size INTEGER,
     ParentKey INTEGER,
-    Path      TEXT,
+    Data TEXT,
     FOREIGN KEY (ParentKey) REFERENCES ValueEnum (Key) ON DELETE CASCADE
 )
