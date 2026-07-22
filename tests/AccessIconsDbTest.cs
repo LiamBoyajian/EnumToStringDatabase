@@ -47,19 +47,19 @@ public class AccessIconsDbTest
     [TestMethod]
     public void TestPut()
     {
-        Assert.AreEqual(true, AccessIconsDb.PutIcon(_basicEntry));
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_basicEntry));
     }
 
     [TestMethod]
     public void TestPutDuplicate()
     {
-        Assert.AreEqual(false, AccessIconsDb.PutIcon(_basicEntry));
+        Assert.AreEqual(false, AccessIconsDb.PutEntry(_basicEntry));
     }
 
     [TestMethod]
     public void TestPutAlternate()
     {
-        Assert.AreEqual(true, AccessIconsDb.PutIcon(_secondEntry));
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_secondEntry));
     }
 
     [TestMethod]
@@ -77,40 +77,46 @@ public class AccessIconsDbTest
     [TestMethod]
     public void TestGetFile()
     {
-        Assert.AreEqual("EXAMPLE", AccessIconsDb.GetFileAddress(AbstractPlant.Rt.Health, 16));
+        Assert.AreEqual("EXAMPLE", AccessIconsDb.GetData(AbstractPlant.Rt.Health, 16));
+    }
+
+    [TestMethod]
+    public void TestGetAlternate()
+    {
+        Assert.AreEqual("EXAMPLE2", AccessIconsDb.GetData(AbstractPlant.Rt.Health, 16, 1));
     }
 
 
     [TestMethod]
     public void TestPutDuplicateValue()
     {
-        Assert.AreEqual(false, AccessIconsDb.PutIcon(_basicEntry));
+        Assert.AreEqual(false, AccessIconsDb.PutEntry(_basicEntry));
 
-        Assert.AreEqual("EXAMPLE", AccessIconsDb.GetFileAddress(AbstractPlant.Rt.Health, 16));
+        Assert.AreEqual("EXAMPLE", AccessIconsDb.GetData(AbstractPlant.Rt.Health, 16));
 
-        Assert.AreEqual(true, AccessIconsDb.PutIcon(new Entry(AbstractPlant.Rt.Health, 16, "FORSEN")));
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(new Entry(AbstractPlant.Rt.Health, 16, "FORSEN")));
 
-        Assert.AreEqual("EXAMPLE", AccessIconsDb.GetFileAddress(AbstractPlant.Rt.Health, 16));
+        Assert.AreEqual("EXAMPLE", AccessIconsDb.GetData(AbstractPlant.Rt.Health, 16));
     }
 
     [TestMethod]
     public void TestPutNewSize()
     {
-        Assert.AreEqual(true, AccessIconsDb.PutIcon(new Entry(AbstractPlant.Rt.Health, 32, "FORSEN")));
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(new Entry(AbstractPlant.Rt.Health, 32, "FORSEN")));
 
-        Assert.AreEqual("FORSEN", AccessIconsDb.GetFileAddress(AbstractPlant.Rt.Health, 32));
+        Assert.AreEqual("FORSEN", AccessIconsDb.GetData(AbstractPlant.Rt.Health, 32));
     }
 
     [TestMethod]
     public void TestPutNull()
     {
-        Assert.AreEqual(false, AccessIconsDb.PutIcon(new Entry(AbstractPlant.Rt.Health, 64, null)));
+        Assert.AreEqual(false, AccessIconsDb.PutEntry(new Entry(AbstractPlant.Rt.Health, 64, null)));
     }
 
     [TestMethod]
     public void TestPutBadInt()
     {
-        Assert.AreEqual(false, AccessIconsDb.PutIcon(new Entry(AbstractPlant.Rt.Health, -1, "EXAMPLE")));
+        Assert.AreEqual(false, AccessIconsDb.PutEntry(new Entry(AbstractPlant.Rt.Health, -1, "EXAMPLE")));
     }
 
     // TEST ENTRYCOUNT
@@ -123,14 +129,38 @@ public class AccessIconsDbTest
     [TestMethod]
     public void TestUpdate()
     {
-        Assert.AreEqual(1, AccessIconsDb.UpdateIcon(new Entry(_basicEntry.Enum, _basicEntry.Size, "NEWEXAMPLE")));
+        Assert.AreEqual(1, AccessIconsDb.UpdateData(new Entry(_basicEntry.Enum, _basicEntry.Size, "NEWEXAMPLE")));
     }
 
     [TestMethod]
     public void TestUpdateTwoOptions()
     {
-        Assert.AreEqual("NEWEXAMPLE", AccessIconsDb.GetFileAddress(AbstractPlant.Rt.Health, 16));
-        Assert.AreEqual(1, AccessIconsDb.UpdateIcon(new Entry(_basicEntry.Enum, _basicEntry.Size, "NEWEXAMPLE")));
-        Assert.IsGreaterThan(0, AccessIconsDb.HasEntry(new Entry(_basicEntry.Enum, _basicEntry.Size, "NEWEXAMPLE")));
+        Assert.AreEqual("NEWEXAMPLE",
+            AccessIconsDb.GetData(_basicEntry.Enum, _basicEntry.Size,
+                AccessIconsDb.HasEntry(new Entry(_basicEntry.Enum, _basicEntry.Size, "NEWEXAMPLE"))));
+        Assert.AreEqual(1, AccessIconsDb.UpdateData(new Entry(_basicEntry.Enum, _basicEntry.Size, "NEWEXAMPLE2")));
+        Assert.IsGreaterThan(-1, AccessIconsDb.HasEntry(new Entry(_basicEntry.Enum, _basicEntry.Size, "NEWEXAMPLE2")));
+    }
+
+    [TestMethod]
+    public void TestRemoveAllOf()
+    {
+        Assert.AreEqual(4, AccessIconsDb.RemoveEntry(new Entry(null, -1, null)));
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(new Entry(AbstractPlant.Rt.Health, 32, "FORSEN")));
+        Assert.AreEqual(1, AccessIconsDb.RemoveEntry(new Entry(null, -1, null)));
+    }
+
+
+    [TestMethod]
+    public void TestUpdateDupe()
+    {
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(new Entry(_basicEntry.Enum, _basicEntry.Size, "FORSEN")));
+        Assert.IsGreaterThan(-1, AccessIconsDb.HasEntry(new Entry(_basicEntry.Enum, _basicEntry.Size, "FORSEN")));
+    }
+
+    [TestMethod]
+    public void TestRemove()
+    {
+        Assert.AreEqual(1, AccessIconsDb.RemoveEntry(new Entry(_basicEntry.Enum, _basicEntry.Size, "FORSEN")));
     }
 }

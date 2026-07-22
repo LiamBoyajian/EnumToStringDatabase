@@ -49,7 +49,7 @@ public class AccessIconsDb
      * [Param Optional]: The size to constrain the value to
      * [Return] : the data value of the oldest entry matching the @enum type and value
      */
-    public static string GetFileAddress(Enum @enum, int size = -1)
+    public static string GetData(Enum @enum, int size = -1, int copy = 0)
     {
         using var connection = new SqliteConnection($"Data Source={DbData};");
         connection.Open();
@@ -57,15 +57,21 @@ public class AccessIconsDb
         if (reader is not { HasRows: true })
             return null;
 
-        reader.Read();
+        int index = 0;
+        while (reader.Read())
+        {
+            if (index == copy)
+                return reader.GetString(reader.GetOrdinal("Data"));
+            ++index;
+        }
 
-        return reader.GetString(reader.GetOrdinal("Data"));
+        return null;
     }
 
     /**
      * [Param]: An enum to check against the database
      * [Param Optional]: The size to constrain the value to
-     * [Return] : the index of the row corresponding to both the query of enum and size values; -1 if query had no identical string
+     * [Return] : the copy # of the row corresponding to both the query of enum and size values; -1 if query had no identical string
      */
     public static int HasEntry(Entry entry)
     {
@@ -91,7 +97,7 @@ public class AccessIconsDb
         return -1; //has at least one matching row
     }
 
-    public static IEnumerable<(int, string)?> GetAddresses(Entry entry, bool allOfType = false)
+    public static IEnumerable<(int, string)?> GetData(Entry entry, bool allOfType = false)
     {
         using var connection = new SqliteConnection($"Data Source={DbData};");
         connection.Open();
@@ -109,7 +115,7 @@ public class AccessIconsDb
      * [Param]: entry type to check against the database (string data != null) (size >= 0)
      * [Returns]: whether the entry was added
      */
-    public static bool PutIcon(Entry entry)
+    public static bool PutEntry(Entry entry)
     {
         entry.GenVariables(out var @enum, out var size, out var data);
 
@@ -171,70 +177,104 @@ public class AccessIconsDb
     }
 
     /**
-     * Entry data (string) cannot be null
+     *
+     * returns: (0 no new changes made) (-1 if no target found) (-2 if existing entry has matching values) (-3 copy is greater than available copies)
      */
-    public static int UpdateIcon(Entry entry)
+    public static int UpdateData(Entry entry, int copy = 0)
     {
         entry.GenVariables(out Enum @enum, out int size, out string data);
         if (size < 0)
             throw new InvalidOperationException("Size in entry is < 0");
+        if (copy < 0)
+            throw new InvalidOperationException("copy is < 0");
+
 
         using var connection = new SqliteConnection($"Data Source= {DbData};");
         connection.Open();
-        var commandCurrentData = _iconEntries(@enum, connection);
+        var tempEntry = new Entry(entry.Enum, entry.Size, null);
+
+        var commandCurrentData = _iconEntries(tempEntry, connection);
         var reader = commandCurrentData.ExecuteReader();
 
         if (!reader.HasRows)
-            return 0;
+            return -1;
 
-        reader.Read();
-        var targetData = reader.GetString(reader.GetOrdinal("Data"));
-        var targetId = reader.GetInt32(reader.GetOrdinal("Id"));
 
-        if (String.CompareOrdinal(targetData, entry.Data) == 0)
-            return 0;
+        int targetId = -1;
+
+        int i = 0;
+        while (reader.Read())
+        {
+            var tempData = reader.GetString(reader.GetOrdinal("Data"));
+
+            if (i == copy)
+            {
+                targetId = reader.GetInt32(reader.GetOrdinal("Id"));
+                ;
+                if (String.CompareOrdinal(tempData, data) == 0)
+                    return 0;
+            }
+            else
+            {
+                if (String.CompareOrdinal(tempData, data) == 0)
+                    return -2;
+            }
+        }
+
+        if (i < copy)
+            return -3;
+        if (targetId == -1)
+            return -1;
 
         using var command = connection.CreateCommand();
 
         command.CommandText = """
                               UPDATE IdToFile
                               SET Data = @newData
-                              WHERE Id = @id;
+                              WHERE Id = @id
                               """;
-        command.Parameters.Add(new SqliteParameter("@newData", targetData));
+        command.Parameters.Add(new SqliteParameter("@newData", data));
         command.Parameters.Add(new SqliteParameter("@id", targetId));
+
+        //AND ParentKey IN (
+        //    SELECT Id
+        //FROM ValueEnum
+        //WHERE 
+        //    );
 
         return command.ExecuteNonQuery();
     }
 
     /**
      * [Param]: entry.Enum to remove from the database
-     * [Param]: entry.Size to remove. Must be >= 0, if not all entries under the given enum will be removed.
+     * [Param]: entry.Size to remove. 0 >, to remove all entries under the given enum.
      *
      */
-    private static int RemoveIcon(Entry entry, bool allOfType = false)
+    public static int RemoveEntry(Entry entry)
     {
         //TODO
-        var connection = new SqliteConnection($"Data Source={DbData};");
+        using var connection = new SqliteConnection($"Data Source={DbData};");
         connection.Open();
-        using var commandIdToFile = connection.CreateCommand();
-        if (allOfType)
-        {
-            commandIdToFile.CommandText = """
-                                          DELETE FROM ValueEnum
-                                          WHERE ValueEnum.ParentEnum = @enum;
-                                          """;
-            commandIdToFile.Parameters.Add(new SqliteParameter("@enum", entry.GetType().Name));
-        }
-        else
-        {
-            commandIdToFile.CommandText = """
-                                          DELETE FROM IdToFile
-                                          WHERE ValueEnum.ParentEnum = @enum;
-                                          """;
-        }
 
-        return -1; //TODO
+        using var removeCommand = connection.CreateCommand();
+
+
+        removeCommand.CommandText = """
+                                            DELETE FROM IdToFile
+                                            WHERE ParentKey IN (
+                                                SELECT Key
+                                                FROM ValueEnum
+                                                WHERE (@enumName IS null OR (ValueEnum.ParentEnum = @enumName AND ValueEnum.Value = @value)
+                                                )) AND (@size = -1 OR IdToFile.Size = @size) AND (@data IS null OR IdToFile.Data = @data); 
+                                    """;
+        removeCommand.Parameters.Add(new SqliteParameter("@enumName",
+            (object)entry.Enum?.GetType().Name ?? DBNull.Value));
+        removeCommand.Parameters.Add(new SqliteParameter("@value", Convert.ToInt32(entry.Enum)));
+        removeCommand.Parameters.Add(new SqliteParameter("@size", Convert.ToInt32(entry.Size)));
+        removeCommand.Parameters.Add(new SqliteParameter("@data", (object)entry.Data ?? DBNull.Value));
+
+
+        return removeCommand.ExecuteNonQuery();
     }
 
 
