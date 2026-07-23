@@ -9,3 +9,4 @@ Designed to allow an enum to store references to many file paths (strings), whil
 I am not planning to update outside my Godot project needing it.
 
 
+Ai was used only to learn sql and c#-testing, and was never used to create any code.
