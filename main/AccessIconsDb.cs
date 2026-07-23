@@ -1,13 +1,9 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
-using Dapper;
-using Main.main.scripts.core.plants;
 using Microsoft.Data.Sqlite;
 
-namespace Main.addons.EnumToIcon.main;
+namespace Main.addons.EnumToIcon.EnumToStringDatabase.main;
 
 public struct Entry(Enum @enum, int size = -1, string data = null)
 {
@@ -41,7 +37,8 @@ public struct Entry(Enum @enum, int size = -1, string data = null)
 public class AccessIconsDb
 {
     public static string DbData { get; set; } =
-        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "addons/EnumToIcon/main/enum_to_directory.db");
+        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "addons", "EnumToIcon", "EnumToStringDatabase", "main",
+            "db_declaration.sql");
 
     public AccessIconsDb(string data = null)
     {

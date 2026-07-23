@@ -1,11 +1,12 @@
 using System;
 using System.IO;
-using Main.addons.EnumToIcon.main;
+using Main.addons.EnumToIcon.EnumToStringDatabase.main;
+
 using Main.main.scripts.core.plants;
 using Microsoft.Data.Sqlite;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace Main.addons.EnumToIcon.tests;
+namespace Main.addons.EnumToIcon.EnumToStringDatabase.tests;
 
 [TestClass]
 public class AccessIconsDbTest
@@ -29,7 +30,7 @@ public class AccessIconsDbTest
         _connection.Open();
 
         using var command = _connection.CreateCommand();
-        string scriptPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "addons", "EnumToIcon", "main",
+        string scriptPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "addons", "EnumToIcon", "EnumToStringDatabase", "main",
             "db_declaration.sql");
         command.CommandText = File.ReadAllText(scriptPath);
         command.ExecuteNonQuery();
