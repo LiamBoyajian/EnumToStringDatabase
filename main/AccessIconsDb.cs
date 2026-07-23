@@ -9,11 +9,11 @@ using Microsoft.Data.Sqlite;
 
 namespace Main.addons.EnumToIcon.main;
 
-public struct Entry(Enum @enum, int size, string data = "")
+public struct Entry(Enum @enum, int size = -1, string data = null)
 {
+    public Enum @Enum { get; set; } = @enum;
     public string Data { get; set; } = data;
     public int Size { get; set; } = size;
-    public Enum @Enum { get; set; } = @enum;
 
     public int GetOrdinal()
     {
@@ -31,6 +31,11 @@ public struct Entry(Enum @enum, int size, string data = "")
         size = Size;
         data = Data;
     }
+
+    public Entry NullDataClone()
+    {
+        return new Entry(Enum, Size, null);
+    }
 }
 
 public class AccessIconsDb
@@ -44,16 +49,41 @@ public class AccessIconsDb
             DbData = data;
     }
 
+    public static string GetData(Enum @enum, int copy = 0)
+    {
+        if (copy < 0)
+            throw new ArgumentException("copy is < 0");
+
+        using var connection = new SqliteConnection($"Data Source={DbData};");
+        connection.Open();
+        var reader = _iconEntries(new Entry(@enum), connection).ExecuteReader();
+        if (reader is not { HasRows: true })
+            return null;
+
+        int index = 0;
+        while (reader.Read())
+        {
+            if (index == copy)
+                return reader.GetString(reader.GetOrdinal("Data"));
+            ++index;
+        }
+
+        return null;
+    }
+
     /**
      * [Param]: An enum to check against the database
      * [Param Optional]: The size to constrain the value to
      * [Return] : the data value of the oldest entry matching the @enum type and value
      */
-    public static string GetData(Enum @enum, int size = -1, int copy = 0)
+    public static string GetData(Entry entry, int copy = 0)
     {
+        if (copy < 0)
+            throw new ArgumentException("copy is < 0");
+
         using var connection = new SqliteConnection($"Data Source={DbData};");
         connection.Open();
-        var reader = _iconEntries(@enum, connection, size).ExecuteReader();
+        var reader = _iconEntries(entry, connection).ExecuteReader();
         if (reader is not { HasRows: true })
             return null;
 
@@ -97,7 +127,7 @@ public class AccessIconsDb
         return -1; //has at least one matching row
     }
 
-    public static IEnumerable<(int, string)?> GetData(Entry entry, bool allOfType = false)
+    public static IEnumerable<(int, string)?> GetAllData(Entry entry, bool allOfType = false)
     {
         using var connection = new SqliteConnection($"Data Source={DbData};");
         connection.Open();
@@ -119,8 +149,12 @@ public class AccessIconsDb
     {
         entry.GenVariables(out var @enum, out var size, out var data);
 
-        if (size < 0) return false;
-        if (data == null) return false;
+        if (@enum == null)
+            throw new ArgumentException("data is null");
+        if (size < 0)
+            throw new ArgumentException("size is < 0");
+        if (data == null)
+            throw new ArgumentException("data is null");
 
         using var connection = new SqliteConnection($"Data Source={DbData};");
         connection.Open();
@@ -128,7 +162,8 @@ public class AccessIconsDb
         if (String.CompareOrdinal(_getFileAddress(@enum, connection, size), data) == 0)
             return false;
 
-        if (connection == null) throw new Exception("Established connection was not found");
+        if (connection == null)
+            throw new Exception("Established connection was not found");
 
         var reader = _getValueEnums(@enum, connection).ExecuteReader();
         int rowKey;
@@ -177,23 +212,24 @@ public class AccessIconsDb
     }
 
     /**
-     *
+     * param: size > 0
+     * param: copy > 0
      * returns: (0 no new changes made) (-1 if no target found) (-2 if existing entry has matching values) (-3 copy is greater than available copies)
      */
     public static int UpdateData(Entry entry, int copy = 0)
     {
         entry.GenVariables(out Enum @enum, out int size, out string data);
         if (size < 0)
-            throw new InvalidOperationException("Size in entry is < 0");
+            throw new ArgumentException("Size in entry is < 0");
         if (copy < 0)
-            throw new InvalidOperationException("copy is < 0");
-
+            throw new ArgumentException("copy is < 0");
+        if (@enum == null)
+            throw new ArgumentException("enum is null");
 
         using var connection = new SqliteConnection($"Data Source= {DbData};");
         connection.Open();
-        var tempEntry = new Entry(entry.Enum, entry.Size, null);
 
-        var commandCurrentData = _iconEntries(tempEntry, connection);
+        var commandCurrentData = _iconEntries(entry.NullDataClone(), connection);
         var reader = commandCurrentData.ExecuteReader();
 
         if (!reader.HasRows)
@@ -210,7 +246,6 @@ public class AccessIconsDb
             if (i == copy)
             {
                 targetId = reader.GetInt32(reader.GetOrdinal("Id"));
-                ;
                 if (String.CompareOrdinal(tempData, data) == 0)
                     return 0;
             }
@@ -219,12 +254,13 @@ public class AccessIconsDb
                 if (String.CompareOrdinal(tempData, data) == 0)
                     return -2;
             }
+
+            ++i;
         }
 
-        if (i < copy)
+        if (i == copy)
             return -3;
-        if (targetId == -1)
-            return -1;
+
 
         using var command = connection.CreateCommand();
 
@@ -236,42 +272,72 @@ public class AccessIconsDb
         command.Parameters.Add(new SqliteParameter("@newData", data));
         command.Parameters.Add(new SqliteParameter("@id", targetId));
 
-        //AND ParentKey IN (
-        //    SELECT Id
-        //FROM ValueEnum
-        //WHERE 
-        //    );
-
         return command.ExecuteNonQuery();
     }
 
-    /**
-     * [Param]: entry.Enum to remove from the database
-     * [Param]: entry.Size to remove. 0 >, to remove all entries under the given enum.
-     *
-     */
-    public static int RemoveEntry(Entry entry)
+    public static int ClearDatabase()
     {
-        //TODO
+        using var connection = new SqliteConnection($"Data Source={DbData};");
+        connection.Open();
+        using var removeCommand = connection.CreateCommand();
+
+        removeCommand.CommandText = """
+                                    DELETE FROM IdToFile;
+                                    DELETE FROM ValueEnum;
+                                    """;
+        return removeCommand.ExecuteNonQuery();
+    }
+
+    /**
+     * [Param]: entry
+     *          @enum: cannot be null
+     *          size: > 0 to constrain to that size
+     *          data: != null to constrain to that string
+     *
+     * [Param]: if true selects all entries of enum and ordinal value
+     * Returns: total affected rows
+     */
+    public static int RemoveEntry(Entry entry, bool allOfType = false)
+    {
+        if (entry.Enum == null)
+            throw new ArgumentException("Enum is null");
+
         using var connection = new SqliteConnection($"Data Source={DbData};");
         connection.Open();
 
         using var removeCommand = connection.CreateCommand();
+        var value = Convert.ToInt32(entry.Enum);
 
-
-        removeCommand.CommandText = """
-                                            DELETE FROM IdToFile
-                                            WHERE ParentKey IN (
+        if (allOfType)
+        {
+            removeCommand.CommandText = """
+                                        DELETE FROM IdToFile
+                                        WHERE (ParentKey IN (
                                                 SELECT Key
                                                 FROM ValueEnum
-                                                WHERE (@enumName IS null OR (ValueEnum.ParentEnum = @enumName AND ValueEnum.Value = @value)
-                                                )) AND (@size = -1 OR IdToFile.Size = @size) AND (@data IS null OR IdToFile.Data = @data); 
-                                    """;
+                                                WHERE ValueEnum.ParentEnum = @enumName
+                                                )
+                                            );
+                                        """;
+        }
+        else
+        {
+            removeCommand.CommandText = """
+                                        DELETE FROM IdToFile
+                                        WHERE (ParentKey IN (
+                                                SELECT Key
+                                                FROM ValueEnum
+                                                WHERE ValueEnum.ParentEnum = @enumName AND (@value < 0 OR ValueEnum.Value = @value)
+                                                ) AND (@size = -1 OR IdToFile.Size = @size) AND (@data IS null OR IdToFile.Data = @data)
+                                            )
+                                        """;
+            removeCommand.Parameters.Add(new SqliteParameter("@value", value));
+            removeCommand.Parameters.Add(new SqliteParameter("@size", Convert.ToInt32(entry.Size)));
+            removeCommand.Parameters.Add(new SqliteParameter("@data", (object)entry.Data ?? DBNull.Value));
+        }
+
         removeCommand.Parameters.Add(new SqliteParameter("@enumName",
             (object)entry.Enum?.GetType().Name ?? DBNull.Value));
-        removeCommand.Parameters.Add(new SqliteParameter("@value", Convert.ToInt32(entry.Enum)));
-        removeCommand.Parameters.Add(new SqliteParameter("@size", Convert.ToInt32(entry.Size)));
-        removeCommand.Parameters.Add(new SqliteParameter("@data", (object)entry.Data ?? DBNull.Value));
 
 
         return removeCommand.ExecuteNonQuery();
@@ -281,6 +347,7 @@ public class AccessIconsDb
     public static int IconEntryCount(Entry entry, bool allOfType = false) =>
         IconEntryCount(entry.Enum, entry.Size, allOfType);
 
+    public static int IconEntryCount(Enum @enum) => IconEntryCount(@enum, -1);
     public static int IconEntryCount(Enum @enum, bool allOfType = false) => IconEntryCount(@enum, -1, allOfType);
 
     /**
@@ -293,7 +360,7 @@ public class AccessIconsDb
     {
         using var connection = new SqliteConnection($"Data Source={DbData};");
         connection.Open();
-        var reader = _iconEntries(@enum, connection, size, allOfType).ExecuteReader();
+        var reader = _iconEntries(new Entry(@enum, size, null), connection, allOfType).ExecuteReader();
         var result = 0;
         while (reader.HasRows && reader.Read())
         {
@@ -303,15 +370,8 @@ public class AccessIconsDb
         return result;
     }
 
-    //PRIVATE HELPER METHODS
-    private static SqliteCommand _iconEntries(Enum @enum, SqliteConnection connection, int size = -1,
-        bool allOfType = false) =>
-        _iconEntries(new Entry(@enum, size, null), connection, allOfType);
-
-    private static SqliteCommand _iconEntries(Enum @enum, SqliteConnection connection, bool allOfType) =>
-        _iconEntries(@enum, connection, -1, allOfType);
-
     /**
+     * Searches for entries in the db that match the given entry.
      * [Return]: the joined query
      * [Param]: An enum to check against the database
      * [Param]: An established connection
@@ -322,6 +382,7 @@ public class AccessIconsDb
     {
         entry.GenVariables(out var @enum, out var size, out var data);
 
+
         if (connection == null)
             throw new ArgumentException("connection was null");
 
@@ -329,7 +390,7 @@ public class AccessIconsDb
 
 
         int enumOrdinal;
-        if (!allOfType)
+        if (!allOfType && @enum != null)
         {
             enumOrdinal = Convert.ToInt32(@enum);
         }
@@ -344,10 +405,14 @@ public class AccessIconsDb
                               SELECT *
                               FROM IdToFile
                               JOIN ValueEnum ON IdToFile.ParentKey = ValueEnum.Key
-                              WHERE (@enum is null OR ValueEnum.ParentEnum = @enum) AND (@enumOrdinal < 0 OR ValueEnum.Value = @enumOrdinal) AND (@size < 0 OR IdToFile.Size = @size) AND (@data IS null OR IdToFile.Data = @data); 
+                              WHERE (
+                                  @enum is null OR ValueEnum.ParentEnum = @enum) 
+                                  AND (@enumOrdinal < 0 OR ValueEnum.Value = @enumOrdinal) 
+                                  AND (@size < 0 OR IdToFile.Size = @size) 
+                                  AND (@data IS null OR IdToFile.Data = @data)
                               """;
 
-        command.Parameters.Add(new SqliteParameter("@enum", (object)@enum.GetType().Name ?? DBNull.Value));
+        command.Parameters.Add(new SqliteParameter("@enum", (object)@enum?.GetType().Name ?? DBNull.Value));
         command.Parameters.Add(new SqliteParameter("@enumOrdinal", enumOrdinal));
         command.Parameters.Add(new SqliteParameter("@size", size));
         command.Parameters.Add(new SqliteParameter("@data", (object)data ?? DBNull.Value));
@@ -425,7 +490,7 @@ public class AccessIconsDb
     private static string _getFileAddress(Enum @enum, SqliteConnection connection, int size = -1)
     {
         connection.Open();
-        var reader = _iconEntries(@enum, connection, size).ExecuteReader();
+        var reader = _iconEntries(new Entry(@enum, size, null), connection).ExecuteReader();
         if (reader is not { HasRows: true })
             return null;
 
