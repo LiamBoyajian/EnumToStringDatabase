@@ -5,6 +5,16 @@ using Microsoft.Data.Sqlite;
 
 namespace Main.addons.EnumToIcon.EnumToStringDatabase.main;
 
+/**
+*     Used to describe elements in the database. When passed as a param the database is checked
+*      for whether any elements match the entry. Some entry values are considered wildcards,
+*      and will not be searched for during queries.
+*
+*     Entry.Enum (null) to wildcard if method allows it
+*     Entry.Size (0 >) to wildcard size; otherwise constrain search to size
+*     Entry.Data (null) to wildcard; other constrain search to data
+*
+*/
 public struct Entry(Enum @enum, int size = -1, string data = null)
 {
     public Enum @Enum { get; set; } = @enum;
@@ -31,6 +41,30 @@ public struct Entry(Enum @enum, int size = -1, string data = null)
     public Entry NullDataClone()
     {
         return new Entry(Enum, Size, null);
+    }
+
+    public Entry EnumDataClone()
+    {
+        return new Entry(@Enum, -1, null);
+    }
+
+    public override int GetHashCode()
+    {
+        return ((GetEnumName().Length << (GetEnumName().GetHashCode() % 2)
+                 | GetEnumName().GetHashCode()) << (Size % 2)
+                | Size) << (Data.Length % 2)
+               | Data.Length;
+    }
+
+    public override bool Equals(object obj)
+    {
+        if (obj == (object)this) return true;
+        if (obj is not Entry entry) return false;
+        if (entry.Enum != Enum) return false;
+        if (entry.Size != Size) return false;
+        if (String.CompareOrdinal(entry.Data, Data) != 0) return false;
+
+        return true;
     }
 }
 
@@ -68,10 +102,39 @@ public class AccessIconsDb
         return null;
     }
 
+    public static Entry? GetEntry(Entry entry, int copy = 0)
+    {
+        if (entry.Enum == null)
+            throw new ArgumentNullException(nameof(entry.Enum));
+        if (copy < 0)
+            throw new ArgumentException("copy is < 0");
+
+        using var connection = new SqliteConnection($"Data Source={DbData};");
+        connection.Open();
+        var reader = _iconEntries(entry, connection).ExecuteReader();
+        if (reader is not { HasRows: true })
+            return null;
+
+        int index = 0;
+        while (reader.Read())
+        {
+            if (index == copy)
+            {
+                Entry result = new Entry();
+                result.Data = reader.GetString(reader.GetOrdinal("Data"));
+                result.Size = reader.GetInt32(reader.GetOrdinal("Size"));
+                result.Enum = entry.Enum;
+                return result;
+            }
+
+            ++index;
+        }
+
+        return null;
+    }
+
     /**
      * [Param]: An enum to check against the database
-     * [Param Optional]: The size to constrain the value to
-     * [Return] : the data value of the oldest entry matching the @enum type and value
      */
     public static string GetData(Entry entry, int copy = 0)
     {
@@ -98,9 +161,9 @@ public class AccessIconsDb
     /**
      * [Param]: An enum to check against the database
      * [Param Optional]: The size to constrain the value to
-     * [Return] : the copy # of the row corresponding to both the query of enum and size values; -1 if query had no identical string
+     * [Return] : whether the table contains this entry
      */
-    public static int HasEntry(Entry entry)
+    public static bool HasEntry(Entry entry)
     {
         entry.GenVariables(out Enum @enum, out int size, out string data);
         if (@enum == null)
@@ -111,29 +174,36 @@ public class AccessIconsDb
         entry.Data = null;
         var reader = _iconEntries(entry, connection).ExecuteReader();
         if (reader is not { HasRows: true })
-            return -1;
+            return false;
 
         int index = 0;
         while (reader.Read())
         {
             if (String.CompareOrdinal(reader.GetString(reader.GetOrdinal("Data")), data) == 0)
-                return index;
+                return true;
             ++index;
         }
 
-        return -1; //has at least one matching row
+        return false; //has at least one matching row
     }
 
-    public static IEnumerable<(int, string)?> GetAllData(Entry entry, bool allOfType = false)
+    public static IEnumerable<Entry> GetAllData(Entry entry, bool allOfType = false)
     {
+        if (entry.Enum == null)
+            throw new ArgumentNullException(nameof(entry.Enum));
         using var connection = new SqliteConnection($"Data Source={DbData};");
         connection.Open();
         var reader = _iconEntries(entry, connection, allOfType).ExecuteReader();
 
         while (reader is { HasRows: true })
         {
-            reader.Read();
-            yield return (reader.GetInt32(reader.GetOrdinal("Size")), reader.GetString(reader.GetOrdinal("Data")));
+            Entry result = new Entry();
+
+            result.Data = reader.GetString(reader.GetOrdinal("Data"));
+            result.Size = reader.GetInt32(reader.GetOrdinal("Size"));
+            result.Enum = entry.Enum;
+
+            yield return result;
         }
     }
 
@@ -340,24 +410,17 @@ public class AccessIconsDb
         return removeCommand.ExecuteNonQuery();
     }
 
-
-    public static int IconEntryCount(Entry entry, bool allOfType = false) =>
-        IconEntryCount(entry.Enum, entry.Size, allOfType);
-
-    public static int IconEntryCount(Enum @enum) => IconEntryCount(@enum, -1);
-    public static int IconEntryCount(Enum @enum, bool allOfType = false) => IconEntryCount(@enum, -1, allOfType);
-
     /**
      * [Param]: An enum to check against the database
      * [Param Optional]: The size to constrain the value to ( must be >= 0 )
      * [Param Overload]: An entry to cast into previous params
      *
      */
-    public static int IconEntryCount(Enum @enum, int size = -1, bool allOfType = false)
+    public static int IconEntryCount(Entry entry, bool allOfType = false)
     {
         using var connection = new SqliteConnection($"Data Source={DbData};");
         connection.Open();
-        var reader = _iconEntries(new Entry(@enum, size, null), connection, allOfType).ExecuteReader();
+        var reader = _iconEntries(entry, connection, allOfType).ExecuteReader();
         var result = 0;
         while (reader.HasRows && reader.Read())
         {
