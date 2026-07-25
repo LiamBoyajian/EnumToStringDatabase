@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using Main.addons.EnumToIcon.EnumToStringDatabase.main;
-
 using Main.main.scripts.core.plants;
 using Microsoft.Data.Sqlite;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -9,10 +8,12 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace Main.addons.EnumToIcon.EnumToStringDatabase.tests;
 
 [TestClass]
-public class AccessIconsDbTest
+public class MainTests
 {
     private static string _tempDbPath;
     private static SqliteConnection _connection;
+    private static MemoryToDb _godotMemory;
+
     private static Entry _firstHealth16;
     private static Entry _secondHealth16;
     private static Entry _thirdHealth16;
@@ -30,7 +31,8 @@ public class AccessIconsDbTest
         _connection.Open();
 
         using var command = _connection.CreateCommand();
-        string scriptPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "addons", "EnumToIcon", "EnumToStringDatabase", "main",
+        string scriptPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "addons", "EnumToIcon",
+            "EnumToStringDatabase", "main",
             "db_declaration.sql");
         command.CommandText = File.ReadAllText(scriptPath);
         command.ExecuteNonQuery();
@@ -46,6 +48,10 @@ public class AccessIconsDbTest
 
         _health32 = new Entry(AbstractPlant.Rt.Health, 32, "EXAMPLE6");
         _chlorophyll16 = new Entry(AbstractPlant.Rt.Chlorophyll, 16, "EXAMPLE7");
+
+
+        //_godotMemory = new MemoryToDb();
+        //_godotMemory._Ready();
     }
 
     [TestInitialize]
@@ -123,7 +129,7 @@ public class AccessIconsDbTest
     [TestMethod]
     public void TestIconEntryCountZero()
     {
-        Assert.AreEqual(0, AccessIconsDb.IconEntryCount(AbstractPlant.Rt.Health, -1));
+        Assert.AreEqual(0, AccessIconsDb.IconEntryCount(_firstHealth16));
     }
 
     [TestMethod]
@@ -131,24 +137,69 @@ public class AccessIconsDbTest
     {
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_firstHealth16));
 
-
-        Assert.AreEqual(1, AccessIconsDb.IconEntryCount(AbstractPlant.Rt.Health, -1));
+        Assert.AreEqual(1, AccessIconsDb.IconEntryCount(_firstHealth16));
     }
 
     [TestMethod]
-    public void TestIconEntryCountNoneOfType()
+    public void TestIconEntryCountNoData()
+    {
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_firstHealth16));
+
+        Assert.AreEqual(1, AccessIconsDb.IconEntryCount(_firstHealth16.NullDataClone()));
+    }
+
+    [TestMethod]
+    public void TestIconEntryCountNoneOfTypeNoData()
     {
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_chlorophyll16));
 
-        Assert.AreEqual(0, AccessIconsDb.IconEntryCount(AbstractPlant.Rt.Health));
+        Assert.AreEqual(0, AccessIconsDb.IconEntryCount(_firstHealth16.NullDataClone()));
     }
+
+    [TestMethod]
+    public void TestIconEntryCountNoneOfTypeEnum()
+    {
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_chlorophyll16));
+
+        Assert.AreEqual(0, AccessIconsDb.IconEntryCount(_firstHealth16.EnumDataClone()));
+    }
+
+    [TestMethod]
+    public void TestIconEntryCountEnumType()
+    {
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_chlorophyll16));
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_health32));
+
+        Assert.AreEqual(1, AccessIconsDb.IconEntryCount(_firstHealth16.NullDataClone(), true));
+    }
+
+    [TestMethod]
+    public void TestIconEntryCountNoDataConflicting()
+    {
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_firstHealth16));
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_secondHealth16));
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_health32));
+
+        Assert.AreEqual(2, AccessIconsDb.IconEntryCount(_firstHealth16.NullDataClone()));
+    }
+
+    [TestMethod]
+    public void TestIconEntryCountNoDataNoSize()
+    {
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_firstHealth16));
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_secondHealth16));
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_health32));
+
+        Assert.AreEqual(3, AccessIconsDb.IconEntryCount(_firstHealth16.EnumDataClone()));
+    }
+
 
     [TestMethod]
     public void TestIconEntryCountNoneOfEnumType()
     {
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_chlorophyll16));
 
-        Assert.AreEqual(0, AccessIconsDb.IconEntryCount(AbstractPlant.Rt.Health, 16));
+        Assert.AreEqual(0, AccessIconsDb.IconEntryCount(_firstHealth16.NullDataClone()));
     }
 
     [TestMethod]
@@ -158,7 +209,7 @@ public class AccessIconsDbTest
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_secondHealth16));
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_chlorophyll16));
 
-        Assert.AreEqual(2, AccessIconsDb.IconEntryCount(AbstractPlant.Rt.Health, -1));
+        Assert.AreEqual(2, AccessIconsDb.IconEntryCount(_firstHealth16.EnumDataClone()));
     }
 
     [TestMethod]
@@ -168,7 +219,7 @@ public class AccessIconsDbTest
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_health32));
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_chlorophyll16));
 
-        Assert.AreEqual(1, AccessIconsDb.IconEntryCount(AbstractPlant.Rt.Health, 16));
+        Assert.AreEqual(1, AccessIconsDb.IconEntryCount(_firstHealth16.NullDataClone()));
     }
 
     [TestMethod]
@@ -178,7 +229,7 @@ public class AccessIconsDbTest
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_health32));
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_chlorophyll16));
 
-        Assert.AreEqual(2, AccessIconsDb.IconEntryCount(AbstractPlant.Rt.Health, 16, true));
+        Assert.AreEqual(2, AccessIconsDb.IconEntryCount(_firstHealth16.NullDataClone(), true));
     }
 
     [TestMethod]
@@ -188,7 +239,7 @@ public class AccessIconsDbTest
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_health32));
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_chlorophyll16));
 
-        Assert.AreEqual(3, AccessIconsDb.IconEntryCount(AbstractPlant.Rt.Health, true));
+        Assert.AreEqual(3, AccessIconsDb.IconEntryCount(_firstHealth16.EnumDataClone(), true));
     }
 
     // GET --------------------
@@ -289,6 +340,92 @@ public class AccessIconsDbTest
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_chlorophyll16));
 
         Assert.Throws<ArgumentException>(() => AccessIconsDb.GetData(_chlorophyll16.NullDataClone(), -1));
+    }
+
+    // GET ENTRY --------------------
+
+    [TestMethod]
+    public void TestGetEntryNullEnumThrows()
+    {
+        Assert.Throws<ArgumentNullException>(() => AccessIconsDb.GetEntry(_null16));
+    }
+
+    [TestMethod]
+    public void TestGetEntryNegativeCopyThrows()
+    {
+        Assert.Throws<ArgumentException>(() => AccessIconsDb.GetEntry(_firstHealth16, -1));
+    }
+
+    [TestMethod]
+    public void TestGetEntryNoMatchReturnsNull()
+    {
+        Assert.IsNull(AccessIconsDb.GetEntry(_firstHealth16));
+    }
+
+    [TestMethod]
+    public void TestGetEntryFirstCopy()
+    {
+        Assert.IsTrue(AccessIconsDb.PutEntry(_firstHealth16));
+        Assert.IsTrue(AccessIconsDb.PutEntry(_secondHealth16));
+
+        Entry? result = AccessIconsDb.GetEntry(_firstHealth16.NullDataClone(), 0);
+
+        Assert.IsNotNull(result);
+        Assert.AreEqual(_firstHealth16.Data, result.Value.Data);
+        Assert.AreEqual(_firstHealth16.Size, result.Value.Size);
+        Assert.AreEqual(_firstHealth16.Enum, result.Value.Enum);
+    }
+
+    [TestMethod]
+    public void TestGetEntrySecondCopy()
+    {
+        Assert.IsTrue(AccessIconsDb.PutEntry(_firstHealth16));
+        Assert.IsTrue(AccessIconsDb.PutEntry(_secondHealth16));
+
+        Entry? result = AccessIconsDb.GetEntry(_firstHealth16.NullDataClone(), 1);
+
+        Assert.IsNotNull(result);
+        Assert.AreEqual(_secondHealth16.Data, result.Value.Data);
+        Assert.AreEqual(_secondHealth16.Size, result.Value.Size);
+        Assert.AreEqual(_secondHealth16.Enum, result.Value.Enum);
+    }
+
+    [TestMethod]
+    public void TestGetEntryOutOfRangeCopyReturnsNull()
+    {
+        Assert.IsTrue(AccessIconsDb.PutEntry(_firstHealth16));
+
+        Entry? result = AccessIconsDb.GetEntry(_firstHealth16.NullDataClone(), 5);
+
+        Assert.IsNull(result);
+    }
+
+    [TestMethod]
+    public void TestGetEntryNoSize()
+    {
+        Assert.IsTrue(AccessIconsDb.PutEntry(_firstHealth16));
+        Assert.IsTrue(AccessIconsDb.PutEntry(_secondHealth16));
+
+        Entry? result = AccessIconsDb.GetEntry(_firstHealth16.EnumDataClone(), 0);
+
+        Assert.IsNotNull(result);
+        Assert.AreEqual(_firstHealth16.Data, result.Value.Data);
+        Assert.AreEqual(_firstHealth16.Size, result.Value.Size);
+        Assert.AreEqual(_firstHealth16.Enum, result.Value.Enum);
+    }
+
+    [TestMethod]
+    public void TestGetEntryNoSizeSecondCopy()
+    {
+        Assert.IsTrue(AccessIconsDb.PutEntry(_firstHealth16));
+        Assert.IsTrue(AccessIconsDb.PutEntry(_secondHealth16));
+
+        Entry? result = AccessIconsDb.GetEntry(_firstHealth16.EnumDataClone(), 1);
+
+        Assert.IsNotNull(result);
+        Assert.AreEqual(_secondHealth16.Data, result.Value.Data);
+        Assert.AreEqual(_secondHealth16.Size, result.Value.Size);
+        Assert.AreEqual(_secondHealth16.Enum, result.Value.Enum);
     }
 
     // UPDATE -------------
@@ -447,5 +584,39 @@ public class AccessIconsDbTest
         Assert.AreEqual(3, AccessIconsDb.RemoveEntry(_firstHealth16.NullDataClone(), true));
         Assert.AreEqual(null, AccessIconsDb.GetData(_firstHealth16.NullDataClone()));
         Assert.AreEqual(null, AccessIconsDb.GetData(_chlorophyll16.NullDataClone()));
+    }
+
+    //--------------------------------------------------
+    // TESTING MemoryToDb
+    //--------------------------------------------------
+    [TestMethod]
+    public void RequestData()
+    {
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_firstHealth16));
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_secondHealth16));
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_chlorophyll16));
+
+        Assert.AreEqual(_firstHealth16, _godotMemory.RequestData(_firstHealth16));
+    }
+
+    [TestMethod]
+    public void CheckBatchData()
+    {
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_firstHealth16));
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_secondHealth16));
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_chlorophyll16));
+
+        Assert.AreEqual(_firstHealth16, _godotMemory.RequestData(_firstHealth16.NullDataClone()));
+    }
+
+    [TestMethod]
+    public void CheckData()
+    {
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_firstHealth16));
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_secondHealth16));
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_chlorophyll16));
+
+        Assert.AreEqual(_firstHealth16, _godotMemory.RequestData(_firstHealth16));
+        Assert.AreEqual(_firstHealth16, _godotMemory.CheckData(_firstHealth16));
     }
 }
