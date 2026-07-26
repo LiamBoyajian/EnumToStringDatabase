@@ -8,11 +8,10 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace Main.addons.EnumToIcon.EnumToStringDatabase.tests;
 
 [TestClass]
-public class MainTests
+public class DbTests
 {
     private static string _tempDbPath;
     private static SqliteConnection _connection;
-    private static MemoryToDb _godotMemory;
 
     private static Entry _firstHealth16;
     private static Entry _secondHealth16;
@@ -48,10 +47,6 @@ public class MainTests
 
         _health32 = new Entry(AbstractPlant.Rt.Health, 32, "EXAMPLE6");
         _chlorophyll16 = new Entry(AbstractPlant.Rt.Chlorophyll, 16, "EXAMPLE7");
-
-
-        //_godotMemory = new MemoryToDb();
-        //_godotMemory._Ready();
     }
 
     [TestInitialize]
@@ -74,6 +69,61 @@ public class MainTests
         SqliteConnection.ClearAllPools();
         if (File.Exists(_tempDbPath))
             File.Delete(_tempDbPath);
+    }
+
+    // ENTRY
+
+    [TestMethod]
+    public void TestToString()
+    {
+        Assert.AreEqual("Rt.0.16.EXAMPLE", _firstHealth16.ToString());
+        Assert.AreEqual("Rt.1.16.EXAMPLE7", _chlorophyll16.ToString());
+    }
+
+    [TestMethod]
+    public void TestNullDataClone()
+    {
+        Assert.AreEqual("Rt.0.16.", _firstHealth16.NullDataClone().ToString());
+    }
+
+    [TestMethod]
+    public void TestEnumDataClone()
+    {
+        Assert.AreEqual("Rt.0.-1.", _firstHealth16.EnumDataClone().ToString());
+    }
+
+    [TestMethod]
+    public void FromString()
+    {
+        Assert.AreEqual(_firstHealth16.ToString(),
+            Entry.FromString(typeof(AbstractPlant.Rt), "Rt.0.16.EXAMPLE").ToString());
+    }
+
+    [TestMethod]
+    public void FromStringAlternateSize()
+    {
+        Assert.AreEqual(_health32.ToString(),
+            Entry.FromString(typeof(AbstractPlant.Rt), "Rt.0.32.EXAMPLE6").ToString());
+    }
+
+    [TestMethod]
+    public void FromStringAlternate()
+    {
+        Assert.AreEqual(_chlorophyll16.ToString(),
+            Entry.FromString(typeof(AbstractPlant.Rt), "Rt.1.16.EXAMPLE7").ToString());
+    }
+
+
+    [TestMethod]
+    public void FromStringNullString()
+    {
+        Assert.Throws<ArgumentException>(() => Entry.FromString(typeof(AbstractPlant.Rt), null));
+    }
+
+    [TestMethod]
+    public void FromStringNullType()
+    {
+        Assert.Throws<ArgumentException>(() => Entry.FromString(null, "Rt.0.16.EXAMPLE"));
     }
 
     // PUT ----------------
@@ -584,39 +634,5 @@ public class MainTests
         Assert.AreEqual(3, AccessIconsDb.RemoveEntry(_firstHealth16.NullDataClone(), true));
         Assert.AreEqual(null, AccessIconsDb.GetData(_firstHealth16.NullDataClone()));
         Assert.AreEqual(null, AccessIconsDb.GetData(_chlorophyll16.NullDataClone()));
-    }
-
-    //--------------------------------------------------
-    // TESTING MemoryToDb
-    //--------------------------------------------------
-    [TestMethod]
-    public void RequestData()
-    {
-        Assert.AreEqual(true, AccessIconsDb.PutEntry(_firstHealth16));
-        Assert.AreEqual(true, AccessIconsDb.PutEntry(_secondHealth16));
-        Assert.AreEqual(true, AccessIconsDb.PutEntry(_chlorophyll16));
-
-        Assert.AreEqual(_firstHealth16, _godotMemory.RequestData(_firstHealth16));
-    }
-
-    [TestMethod]
-    public void CheckBatchData()
-    {
-        Assert.AreEqual(true, AccessIconsDb.PutEntry(_firstHealth16));
-        Assert.AreEqual(true, AccessIconsDb.PutEntry(_secondHealth16));
-        Assert.AreEqual(true, AccessIconsDb.PutEntry(_chlorophyll16));
-
-        Assert.AreEqual(_firstHealth16, _godotMemory.RequestData(_firstHealth16.NullDataClone()));
-    }
-
-    [TestMethod]
-    public void CheckData()
-    {
-        Assert.AreEqual(true, AccessIconsDb.PutEntry(_firstHealth16));
-        Assert.AreEqual(true, AccessIconsDb.PutEntry(_secondHealth16));
-        Assert.AreEqual(true, AccessIconsDb.PutEntry(_chlorophyll16));
-
-        Assert.AreEqual(_firstHealth16, _godotMemory.RequestData(_firstHealth16));
-        Assert.AreEqual(_firstHealth16, _godotMemory.CheckData(_firstHealth16));
     }
 }
