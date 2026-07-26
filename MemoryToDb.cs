@@ -16,7 +16,7 @@ public partial class MemoryToDb : Node
 {
     public Hashtable Data;
     public Node Instance;
-    [Export] protected string IconFolderPath;
+    //[Export] protected string IconFolderPath = "res://main/sprites/Icons/";
 
     public override void _Ready()
     {
@@ -24,13 +24,13 @@ public partial class MemoryToDb : Node
         Data = new Hashtable();
         var config = new ConfigFile();
 
-        string lastEdit = Directory.GetLastWriteTime(IconFolderPath).ToString("yyyy-MM-dd HH:mm:ss");
-
-        if (String.CompareOrdinal(config.GetValue("Icons", "LastIconsEditTime").AsString(), lastEdit) != 0)
-        {
-            config.SetValue("Icons", "LastIconsEditTime", lastEdit);
-            ClearInitializeDirectory(IconFolderPath);
-        }
+        //string lastEdit = Directory.GetLastWriteTime(IconFolderPath).ToString("yyyy-MM-dd HH:mm:ss");
+//
+        //if (String.CompareOrdinal(config.GetValue("Icons", "LastIconsEditTime").AsString(), lastEdit) != 0)
+        //{
+        //    config.SetValue("Icons", "LastIconsEditTime", lastEdit);
+        //    ClearInitializeDirectory(IconFolderPath);
+        //}
 
         Instance = this;
     }
@@ -64,11 +64,11 @@ public partial class MemoryToDb : Node
         }
     }
 
-    public void ClearInitializeDirectory(string dir)
-    {
-        AccessIconsDb.ClearDatabase();
-        InitializeFromDirectory(IconFolderPath);
-    }
+    //public void ClearInitializeDirectory(string dir)
+    //{
+    //    AccessIconsDb.ClearDatabase();
+    //    InitializeFromDirectory(IconFolderPath);
+    //}
 
 
     /**
@@ -134,11 +134,11 @@ public partial class MemoryToDb : Node
         return AccessIconsDb.PutEntry(entry);
     }
 
-    public bool ClearCache()
+    public void ClearCache()
     {
         Data.Clear();
-        return true;
     }
+
 
     /**
      *

@@ -1,33 +1,49 @@
+using System;
+using System.IO;
 using Main.addons.EnumToIcon.EnumToStringDatabase.main;
 using Main.main.scripts.core.plants;
 using Microsoft.Data.Sqlite;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using static GdUnit4.Assertions;
+using GdUnit4;
 
 namespace Main.addons.EnumToIcon.EnumToStringDatabase.tests;
 
-[TestClass]
+[TestSuite]
 public class GodotTests
 {
-    private static string _tempDbPath;
-    private static SqliteConnection _connection;
-    private static MemoryToDb _godotMemory;
+    private string _tempDbPath;
+    private SqliteConnection _connection;
+    private MemoryToDb _godotMemory;
 
-    private static Entry _health16;
-    private static Entry _secondHealth16;
-    private static Entry _chlorophyll16;
+    private Entry _health16;
+    private Entry _secondHealth16;
+    private Entry _chlorophyll16;
 
-    [ClassInitialize]
-    public static void ClassInitializeGd(TestContext context)
+    [Before]
+    public void ClassInitializeGd()
     {
+        _tempDbPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        _connection = new SqliteConnection($"Data Source={_tempDbPath};");
+        _connection.Open();
+
+        using var command = _connection.CreateCommand();
+        string scriptPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "addons", "EnumToIcon",
+            "EnumToStringDatabase", "main",
+            "db_declaration.sql");
+        command.CommandText = File.ReadAllText(scriptPath);
+        command.ExecuteNonQuery();
+
+        AccessIconsDb.DbData = _tempDbPath;
+
         _godotMemory = AutoFree(new MemoryToDb());
+        _godotMemory?._Ready();
 
         _health16 = new Entry(AbstractPlant.Rt.Health, 16, "EXAMPLE");
         _secondHealth16 = new Entry(AbstractPlant.Rt.Health, 16, "EXAMPLE2");
         _chlorophyll16 = new Entry(AbstractPlant.Rt.Chlorophyll, 16, "EXAMPLE");
     }
 
-    [TestInitialize]
+    [BeforeTest]
     public void TestInitializeGd()
     {
         using var command = _connection.CreateCommand();
@@ -39,13 +55,17 @@ public class GodotTests
         command.ExecuteNonQuery();
     }
 
-    [ClassCleanup]
-    public static void ClassCleanupGd()
+    [After]
+    public void ClassCleanupGd()
     {
-        DbTests.ClassCleanup();
+        _connection?.Close();
+        _connection?.Dispose();
+        SqliteConnection.ClearAllPools();
+        if (File.Exists(_tempDbPath))
+            File.Delete(_tempDbPath);
     }
 
-    [TestMethod]
+    [TestCase]
     public void Test()
     {
     }
@@ -53,34 +73,50 @@ public class GodotTests
     //--------------------------------------------------
     // TESTING MemoryToDb
     //--------------------------------------------------
-    [TestMethod]
+
+
+    [TestCase]
+    public void PutData()
+    {
+        AssertBool(_godotMemory.PutData(_health16)).IsTrue();
+    }
+
+    [TestCase]
     public void RequestData()
     {
-        Assert.AreEqual(true, AccessIconsDb.PutEntry(_health16));
-        Assert.AreEqual(true, AccessIconsDb.PutEntry(_secondHealth16));
-        Assert.AreEqual(true, AccessIconsDb.PutEntry(_chlorophyll16));
+        AssertBool(_godotMemory.PutData(_health16)).IsTrue();
 
-        Assert.AreEqual(_health16, _godotMemory.RequestData(_health16));
+        AssertObject(_godotMemory.RequestData(_health16)).IsEqual(_health16);
     }
 
-    [TestMethod]
+    [TestCase]
     public void CheckBatchData()
     {
-        Assert.AreEqual(true, AccessIconsDb.PutEntry(_health16));
-        Assert.AreEqual(true, AccessIconsDb.PutEntry(_secondHealth16));
-        Assert.AreEqual(true, AccessIconsDb.PutEntry(_chlorophyll16));
+        AssertBool(_godotMemory.PutData(_health16)).IsTrue();
+        AssertBool(_godotMemory.PutData(_secondHealth16)).IsTrue();
+        AssertBool(_godotMemory.PutData(_chlorophyll16)).IsTrue();
 
-        Assert.AreEqual(_health16, _godotMemory.RequestData(_health16.NullDataClone()));
+        AssertObject(_godotMemory.RequestData(_secondHealth16.NullDataClone())).IsEqual(_health16);
     }
 
-    [TestMethod]
+    [TestCase]
+    public void CheckBatchDataCopy()
+    {
+        AssertBool(_godotMemory.PutData(_health16)).IsTrue();
+        AssertBool(_godotMemory.PutData(_secondHealth16)).IsTrue();
+        AssertBool(_godotMemory.PutData(_chlorophyll16)).IsTrue();
+
+        AssertObject(_godotMemory.RequestData(_secondHealth16.NullDataClone(), 1)).IsEqual(_health16);
+    }
+
+    [TestCase]
     public void CheckData()
     {
-        Assert.AreEqual(true, AccessIconsDb.PutEntry(_health16));
-        Assert.AreEqual(true, AccessIconsDb.PutEntry(_secondHealth16));
-        Assert.AreEqual(true, AccessIconsDb.PutEntry(_chlorophyll16));
+        AssertBool(_godotMemory.PutData(_health16)).IsTrue();
+        AssertBool(_godotMemory.PutData(_secondHealth16)).IsTrue();
+        AssertBool(_godotMemory.PutData(_chlorophyll16)).IsTrue();
 
-        Assert.AreEqual(_health16, _godotMemory.RequestData(_health16));
-        Assert.AreEqual(_health16, _godotMemory.CheckData(_health16));
+        AssertObject(_godotMemory.RequestData(_health16)).IsEqual(_health16);
+        AssertObject(_godotMemory.CheckData(_health16)).IsEqual(_health16);
     }
 }

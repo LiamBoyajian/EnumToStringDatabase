@@ -15,7 +15,7 @@ namespace Main.addons.EnumToIcon.EnumToStringDatabase.main;
 *     Entry.Data (null) to wildcard; other constrain search to data
 *
 */
-public struct Entry(Enum @enum, int size = -1, string data = null)
+public struct Entry(Enum @enum = null, int size = -1, string data = null)
 {
     public Enum @Enum { get; set; } = @enum;
     public string Data { get; set; } = data;
@@ -99,13 +99,23 @@ public struct Entry(Enum @enum, int size = -1, string data = null)
 
         return result;
     }
+
+    public static bool operator ==(Entry left, Entry right)
+    {
+        return left.Equals(right);
+    }
+
+    public static bool operator !=(Entry left, Entry right)
+    {
+        return !(left == right);
+    }
 }
 
 public class AccessIconsDb
 {
     public static string DbData { get; set; } =
         Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "addons", "EnumToIcon", "EnumToStringDatabase", "main",
-            "db_declaration.sql");
+            "enum_to_directory.db");
 
     public AccessIconsDb(string data = null)
     {
@@ -260,6 +270,8 @@ public class AccessIconsDb
      */
     public static bool PutEntry(Entry entry)
     {
+        if (entry.Data == null || entry.Size < 0 || entry.Enum == null)
+            return false;
         using var connection = new SqliteConnection($"Data Source={DbData};");
         return _putEntry(entry, connection);
     }
@@ -274,14 +286,13 @@ public class AccessIconsDb
             throw new ArgumentException("size is < 0");
         if (data == null)
             throw new ArgumentException("data is null");
+        if (connection == null)
+            throw new Exception("Established connection was not found");
 
         connection.Open();
 
         if (String.CompareOrdinal(_getFileAddress(@enum, connection, size), data) == 0)
             return false;
-
-        if (connection == null)
-            throw new Exception("Established connection was not found");
 
         var reader = _getValueEnums(@enum, connection).ExecuteReader();
         int rowKey;
