@@ -66,6 +66,39 @@ public struct Entry(Enum @enum, int size = -1, string data = null)
 
         return true;
     }
+
+    public override string ToString()
+    {
+        return $"{GetEnumName()}.{GetOrdinal()}.{Size}.{Data ?? ""}";
+    }
+
+    public static Entry? FromString(Type enumType, string s)
+    {
+        if (enumType == null)
+            throw new ArgumentNullException(nameof(enumType));
+        if (s == null)
+            throw new ArgumentNullException(nameof(s));
+
+
+        if (!enumType.IsEnum)
+            return null;
+
+        var split = s.Split('.');
+
+        Entry result = new Entry();
+
+        int ordinal = Convert.ToInt32(split[1]);
+
+        result.@Enum = (Enum)Enum.ToObject(enumType, ordinal);
+
+        result.Size = Convert.ToInt32(split[2]);
+        if (result.Size < 0)
+            return null;
+
+        result.Data = split[3];
+
+        return result;
+    }
 }
 
 public class AccessIconsDb
@@ -207,12 +240,31 @@ public class AccessIconsDb
         }
     }
 
+    public static int PutAll(IEnumerator<Entry> tempList)
+    {
+        using var connection = new SqliteConnection($"Data Source={DbData};");
+        int result = 0;
+        while (tempList.MoveNext())
+        {
+            if (_putEntry(tempList.Current, connection))
+                ++result;
+        }
+
+        return result;
+    }
+
     /**
      * Add the given entry into the database.
      * [Param]: entry type to check against the database (string data != null) (size >= 0)
      * [Returns]: whether the entry was added
      */
     public static bool PutEntry(Entry entry)
+    {
+        using var connection = new SqliteConnection($"Data Source={DbData};");
+        return _putEntry(entry, connection);
+    }
+
+    public static bool _putEntry(Entry entry, SqliteConnection connection)
     {
         entry.GenVariables(out var @enum, out var size, out var data);
 
@@ -223,7 +275,6 @@ public class AccessIconsDb
         if (data == null)
             throw new ArgumentException("data is null");
 
-        using var connection = new SqliteConnection($"Data Source={DbData};");
         connection.Open();
 
         if (String.CompareOrdinal(_getFileAddress(@enum, connection, size), data) == 0)

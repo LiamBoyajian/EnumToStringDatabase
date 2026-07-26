@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using Godot;
 using Godot.Collections;
 using Main.addons.EnumToIcon.EnumToStringDatabase.main;
@@ -15,13 +16,60 @@ public partial class MemoryToDb : Node
 {
     public Hashtable Data;
     public Node Instance;
+    [Export] protected string IconFolderPath;
 
     public override void _Ready()
     {
         base._Ready();
         Data = new Hashtable();
+        var config = new ConfigFile();
+
+        string lastEdit = Directory.GetLastWriteTime(IconFolderPath).ToString("yyyy-MM-dd HH:mm:ss");
+
+        if (String.CompareOrdinal(config.GetValue("Icons", "LastIconsEditTime").AsString(), lastEdit) != 0)
+        {
+            config.SetValue("Icons", "LastIconsEditTime", lastEdit);
+            ClearInitializeDirectory(IconFolderPath);
+        }
+
         Instance = this;
     }
+
+
+    /**
+     * Initializes
+     */
+    public void InitializeFromDirectory(string dir, bool recursive = true)
+    {
+        if (dir == null)
+            return;
+        using var file = Directory.EnumerateFiles(dir).GetEnumerator();
+        List<Entry> tempList = new List<Entry>();
+        while (file.MoveNext())
+        {
+            Type type = Type.GetType(file.Current?.Split()[0] ?? "");
+            if (type is null || !type.IsEnum)
+                continue;
+
+            if (Entry.FromString(type, file.Current) is { } entry)
+                tempList.Add(entry);
+        }
+
+        AccessIconsDb.PutAll(tempList.GetEnumerator());
+
+        using var subDirs = Directory.EnumerateDirectories(dir).GetEnumerator();
+        while (subDirs.MoveNext())
+        {
+            InitializeFromDirectory(subDirs.Current);
+        }
+    }
+
+    public void ClearInitializeDirectory(string dir)
+    {
+        AccessIconsDb.ClearDatabase();
+        InitializeFromDirectory(IconFolderPath);
+    }
+
 
     /**
      * Param: Entry with values to search for.
@@ -75,6 +123,15 @@ public partial class MemoryToDb : Node
         Data.Add(result.GetHashCode(), result);
 
         return result;
+    }
+
+    /**
+     * If an identical entry is not present in the database, add.
+     * Does not add to the hashmap.
+     */
+    public bool PutData(Entry entry)
+    {
+        return AccessIconsDb.PutEntry(entry);
     }
 
     public bool ClearCache()
