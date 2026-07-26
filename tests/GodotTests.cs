@@ -90,7 +90,18 @@ public class GodotTests
     }
 
     [TestCase]
-    public void CheckBatchData()
+    public void CheckData()
+    {
+        AssertBool(_godotMemory.PutData(_health16)).IsTrue();
+        AssertBool(_godotMemory.PutData(_secondHealth16)).IsTrue();
+        AssertBool(_godotMemory.PutData(_chlorophyll16)).IsTrue();
+
+        AssertObject(_godotMemory.RequestData(_health16)).IsEqual(_health16);
+        AssertObject(_godotMemory.CheckData(_health16)).IsEqual(_health16);
+    }
+
+    [TestCase]
+    public void RequestBatchData()
     {
         AssertBool(_godotMemory.PutData(_health16)).IsTrue();
         AssertBool(_godotMemory.PutData(_secondHealth16)).IsTrue();
@@ -100,23 +111,12 @@ public class GodotTests
     }
 
     [TestCase]
-    public void CheckBatchDataCopy()
+    public void RequestBatchDataCopy()
     {
         AssertBool(_godotMemory.PutData(_health16)).IsTrue();
         AssertBool(_godotMemory.PutData(_secondHealth16)).IsTrue();
         AssertBool(_godotMemory.PutData(_chlorophyll16)).IsTrue();
 
         AssertObject(_godotMemory.RequestData(_secondHealth16.NullDataClone(), 1)).IsEqual(_health16);
-    }
-
-    [TestCase]
-    public void CheckData()
-    {
-        AssertBool(_godotMemory.PutData(_health16)).IsTrue();
-        AssertBool(_godotMemory.PutData(_secondHealth16)).IsTrue();
-        AssertBool(_godotMemory.PutData(_chlorophyll16)).IsTrue();
-
-        AssertObject(_godotMemory.RequestData(_health16)).IsEqual(_health16);
-        AssertObject(_godotMemory.CheckData(_health16)).IsEqual(_health16);
     }
 }

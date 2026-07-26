@@ -13,13 +13,15 @@ namespace Main.addons.EnumToIcon.EnumToStringDatabase.main;
 *     Entry.Enum (null) to wildcard if method allows it
 *     Entry.Size (0 >) to wildcard size; otherwise constrain search to size
 *     Entry.Data (null) to wildcard; other constrain search to data
-*
+*     Entry.Copy (0 >) to wildcard; other constrain search to data TODO reimplement methods using
 */
-public struct Entry(Enum @enum = null, int size = -1, string data = null)
+public struct Entry(Enum @enum = null, int size = -1, string data = null, int copy = -1)
 {
     public Enum @Enum { get; set; } = @enum;
     public string Data { get; set; } = data;
     public int Size { get; set; } = size;
+
+    public int Copy { get; set; } = copy;
 
     public int GetOrdinal()
     {
@@ -31,11 +33,12 @@ public struct Entry(Enum @enum = null, int size = -1, string data = null)
         return @Enum.GetType().Name;
     }
 
-    public void GenVariables(out Enum @enum, out int size, out string data)
+    public void GenVariables(out Enum @enum, out int size, out string data, out int copy)
     {
         @enum = @Enum;
         size = Size;
         data = Data;
+        copy = Copy;
     }
 
     public Entry NullDataClone()
@@ -48,13 +51,6 @@ public struct Entry(Enum @enum = null, int size = -1, string data = null)
         return new Entry(@Enum, -1, null);
     }
 
-    public override int GetHashCode()
-    {
-        return ((GetEnumName().Length << (GetEnumName().GetHashCode() % 2)
-                 | GetEnumName().GetHashCode()) << (Size % 2)
-                | Size) << (Data.Length % 2)
-               | Data.Length;
-    }
 
     public override bool Equals(object obj)
     {
@@ -63,6 +59,21 @@ public struct Entry(Enum @enum = null, int size = -1, string data = null)
         if (entry.Enum != Enum) return false;
         if (entry.Size != Size) return false;
         if (String.CompareOrdinal(entry.Data, Data) != 0) return false;
+
+        return true;
+    }
+
+    /**
+     * Compares entries but does not constrain if a field is a wildcard value
+     */
+    public bool EqualsFuzzy(object obj)
+    {
+        if (obj == (object)this) return true;
+        if (obj is not Entry entry) return false;
+        if (entry.Enum != Enum && entry.Enum != null) return false;
+        if (entry.Size != Size && entry.Size >= 0) return false;
+        if (String.CompareOrdinal(entry.Data, Data) != 0 && entry.Data != null) return false;
+        if (entry.Copy != Copy && entry.Copy >= 0) return false;
 
         return true;
     }
@@ -109,6 +120,16 @@ public struct Entry(Enum @enum = null, int size = -1, string data = null)
     {
         return !(left == right);
     }
+
+    /**
+     * Setter
+     * Optional Param: if empty will default to (wildcard) (-1)
+     */
+    public Entry SetCopy(int copy = -1)
+    {
+        Copy = copy;
+        return this;
+    }
 }
 
 public class AccessIconsDb
@@ -145,12 +166,12 @@ public class AccessIconsDb
         return null;
     }
 
-    public static Entry? GetEntry(Entry entry, int copy = 0)
+    public static Entry? GetEntry(Entry entry)
     {
         if (entry.Enum == null)
             throw new ArgumentNullException(nameof(entry.Enum));
-        if (copy < 0)
-            throw new ArgumentException("copy is < 0");
+        if (entry.Copy < 0)
+            throw new ArgumentException("entry.Copy is < 0");
 
         using var connection = new SqliteConnection($"Data Source={DbData};");
         connection.Open();
@@ -161,7 +182,7 @@ public class AccessIconsDb
         int index = 0;
         while (reader.Read())
         {
-            if (index == copy)
+            if (index == entry.Copy)
             {
                 Entry result = new Entry();
                 result.Data = reader.GetString(reader.GetOrdinal("Data"));
@@ -179,10 +200,10 @@ public class AccessIconsDb
     /**
      * [Param]: An enum to check against the database
      */
-    public static string GetData(Entry entry, int copy = 0)
+    public static string GetData(Entry entry)
     {
-        if (copy < 0)
-            throw new ArgumentException("copy is < 0");
+        if (entry.Copy < 0)
+            throw new ArgumentException("entry.Copy is < 0");
 
         using var connection = new SqliteConnection($"Data Source={DbData};");
         connection.Open();
@@ -193,7 +214,7 @@ public class AccessIconsDb
         int index = 0;
         while (reader.Read())
         {
-            if (index == copy)
+            if (index == entry.Copy)
                 return reader.GetString(reader.GetOrdinal("Data"));
             ++index;
         }
@@ -208,7 +229,7 @@ public class AccessIconsDb
      */
     public static bool HasEntry(Entry entry)
     {
-        entry.GenVariables(out Enum @enum, out int size, out string data);
+        entry.GenVariables(out Enum @enum, out int size, out string data, out var copy);
         if (@enum == null)
             throw new ArgumentNullException(nameof(@enum));
 
@@ -278,7 +299,7 @@ public class AccessIconsDb
 
     public static bool _putEntry(Entry entry, SqliteConnection connection)
     {
-        entry.GenVariables(out var @enum, out var size, out var data);
+        entry.GenVariables(out var @enum, out var size, out var data, out var copy);
 
         if (@enum == null)
             throw new ArgumentException("data is null");
@@ -345,9 +366,9 @@ public class AccessIconsDb
      * param: copy > 0
      * returns: (0 no new changes made) (-1 if no target found) (-2 if existing entry has matching values) (-3 copy is greater than available copies)
      */
-    public static int UpdateData(Entry entry, int copy = 0)
+    public static int UpdateData(Entry entry)
     {
-        entry.GenVariables(out Enum @enum, out int size, out string data);
+        entry.GenVariables(out Enum @enum, out int size, out string data, out var copy);
         if (size < 0)
             throw new ArgumentException("Size in entry is < 0");
         if (copy < 0)
@@ -502,7 +523,7 @@ public class AccessIconsDb
      */
     private static SqliteCommand _iconEntries(Entry entry, SqliteConnection connection, bool allOfType = false)
     {
-        entry.GenVariables(out var @enum, out var size, out var data);
+        entry.GenVariables(out var @enum, out var size, out var data, out var copy);
 
 
         if (connection == null)

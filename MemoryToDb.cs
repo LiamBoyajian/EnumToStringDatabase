@@ -14,14 +14,14 @@ namespace Main.addons.EnumToIcon.EnumToStringDatabase;
  */
 public partial class MemoryToDb : Node
 {
-    public Hashtable Data;
+    public List<Entry> Data;
     public Node Instance;
     //[Export] protected string IconFolderPath = "res://main/sprites/Icons/";
 
     public override void _Ready()
     {
         base._Ready();
-        Data = new Hashtable();
+        Data = new List<Entry>();
         var config = new ConfigFile();
 
         //string lastEdit = Directory.GetLastWriteTime(IconFolderPath).ToString("yyyy-MM-dd HH:mm:ss");
@@ -77,12 +77,18 @@ public partial class MemoryToDb : Node
      *     Entry.Size 0 > to wildcard size; otherwise constrain search to size
      *     Entry.Data null to wildcard; other constrain search to data
      *
-     * Queries the hashtable and returns any found value.
+     * Queries the list and returns any found value.
      */
-    public Entry? CheckData(Entry entry)
+    public Entry? CheckData(Entry entry, int copy = 0)
     {
         if (entry.Enum == null) return null;
-        return (Entry?)Data[entry.GetHashCode()];
+
+        foreach (var e in Data)
+        {
+            if ()
+        }
+
+        return;
     }
 
     /**
@@ -91,11 +97,11 @@ public partial class MemoryToDb : Node
      *     Entry.Size 0 > to wildcard size; otherwise constrain search to size
      *     Entry.Data null to wildcard; other constrain search to data
      *
-     * Queries the hashtable and returns if a value was found.
+     * Queries the list and returns if a value was found.
      */
-    public bool HasData(Entry entry)
+    public bool HasData(Entry entry, int copy = 0)
     {
-        return Data.ContainsKey(entry.GetHashCode());
+        //TODO
     }
 
     /**
@@ -104,18 +110,22 @@ public partial class MemoryToDb : Node
      *     Entry.Enum cannot be null
      *     Entry.Size 0 > to wildcard size; otherwise constrain search to size
      *     Entry.Data null to wildcard; other constrain search to data
-     * Param: int copies to index through matching entries (enum and size)
+     * Param: int copies to index through matching entries (enum and size); using the copy param will always check the database
      *
-     * Queries the hashtable, if not contained, queries the database. If found, adds to the hashtable.
+     * Queries the list, if not contained, queries the database. If found, adds to the list.
      */
     public Entry? RequestData(Entry entry, int copy = 0)
     {
         if (copy < 0) return null;
+        Entry? result;
+        if (copy == 0)
+        {
+            result = CheckData(entry, copy);
+            if (result != null)
+                return result;
+        }
 
-        var result = CheckData(entry);
-        if (result != null)
-            return result;
-
+        //TODO
         result = AccessIconsDb.GetEntry(entry, copy);
         if (result == null)
             return null;
@@ -149,7 +159,7 @@ public partial class MemoryToDb : Node
      * Param: bool allOfType to obtain all entries matching only the enum type.
      *
      * Returns an enumerable that holds any matching entries.
-     * Does not query the hashtable.
+     * Does not query the list.
      */
     public IEnumerable<Entry> GetEntries(Entry entry, bool allOfType = false)
     {

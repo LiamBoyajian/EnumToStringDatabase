@@ -324,7 +324,7 @@ public class DbTests
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_secondHealth16));
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_health32));
 
-        Assert.AreEqual(_secondHealth16.Data, AccessIconsDb.GetData(_firstHealth16.NullDataClone(), 1));
+        Assert.AreEqual(_secondHealth16.Data, AccessIconsDb.GetData(_firstHealth16.NullDataClone().SetCopy(1)));
     }
 
     [TestMethod]
@@ -381,7 +381,7 @@ public class DbTests
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_health32));
 
 
-        Assert.AreEqual(null, AccessIconsDb.GetData(_chlorophyll16.NullDataClone(), 1));
+        Assert.AreEqual(null, AccessIconsDb.GetData(_chlorophyll16.NullDataClone().SetCopy(1)));
     }
 
     [TestMethod]
@@ -389,7 +389,7 @@ public class DbTests
     {
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_chlorophyll16));
 
-        Assert.Throws<ArgumentException>(() => AccessIconsDb.GetData(_chlorophyll16.NullDataClone(), -1));
+        Assert.Throws<ArgumentException>(() => AccessIconsDb.GetData(_chlorophyll16.NullDataClone().SetCopy()));
     }
 
     // GET ENTRY --------------------
@@ -403,7 +403,7 @@ public class DbTests
     [TestMethod]
     public void TestGetEntryNegativeCopyThrows()
     {
-        Assert.Throws<ArgumentException>(() => AccessIconsDb.GetEntry(_firstHealth16, -1));
+        Assert.Throws<ArgumentException>(() => AccessIconsDb.GetEntry(_firstHealth16.SetCopy()));
     }
 
     [TestMethod]
@@ -418,7 +418,7 @@ public class DbTests
         Assert.IsTrue(AccessIconsDb.PutEntry(_firstHealth16));
         Assert.IsTrue(AccessIconsDb.PutEntry(_secondHealth16));
 
-        Entry? result = AccessIconsDb.GetEntry(_firstHealth16.NullDataClone(), 0);
+        Entry? result = AccessIconsDb.GetEntry(_firstHealth16.NullDataClone().SetCopy(0));
 
         Assert.IsNotNull(result);
         Assert.AreEqual(_firstHealth16.Data, result.Value.Data);
@@ -432,7 +432,7 @@ public class DbTests
         Assert.IsTrue(AccessIconsDb.PutEntry(_firstHealth16));
         Assert.IsTrue(AccessIconsDb.PutEntry(_secondHealth16));
 
-        Entry? result = AccessIconsDb.GetEntry(_firstHealth16.NullDataClone(), 1);
+        Entry? result = AccessIconsDb.GetEntry(_firstHealth16.NullDataClone().SetCopy(1));
 
         Assert.IsNotNull(result);
         Assert.AreEqual(_secondHealth16.Data, result.Value.Data);
@@ -445,7 +445,7 @@ public class DbTests
     {
         Assert.IsTrue(AccessIconsDb.PutEntry(_firstHealth16));
 
-        Entry? result = AccessIconsDb.GetEntry(_firstHealth16.NullDataClone(), 5);
+        Entry? result = AccessIconsDb.GetEntry(_firstHealth16.NullDataClone().SetCopy(5));
 
         Assert.IsNull(result);
     }
@@ -456,7 +456,7 @@ public class DbTests
         Assert.IsTrue(AccessIconsDb.PutEntry(_firstHealth16));
         Assert.IsTrue(AccessIconsDb.PutEntry(_secondHealth16));
 
-        Entry? result = AccessIconsDb.GetEntry(_firstHealth16.EnumDataClone(), 0);
+        Entry? result = AccessIconsDb.GetEntry(_firstHealth16.EnumDataClone().SetCopy(0));
 
         Assert.IsNotNull(result);
         Assert.AreEqual(_firstHealth16.Data, result.Value.Data);
@@ -470,7 +470,7 @@ public class DbTests
         Assert.IsTrue(AccessIconsDb.PutEntry(_firstHealth16));
         Assert.IsTrue(AccessIconsDb.PutEntry(_secondHealth16));
 
-        Entry? result = AccessIconsDb.GetEntry(_firstHealth16.EnumDataClone(), 1);
+        Entry? result = AccessIconsDb.GetEntry(_firstHealth16.EnumDataClone().SetCopy(1));
 
         Assert.IsNotNull(result);
         Assert.AreEqual(_secondHealth16.Data, result.Value.Data);
@@ -504,7 +504,7 @@ public class DbTests
         Assert.AreEqual(1, AccessIconsDb.UpdateData(_secondHealth16));
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_chlorophyll16));
 
-        Assert.Throws<ArgumentException>(() => AccessIconsDb.UpdateData(_secondHealth16, -1));
+        Assert.Throws<ArgumentException>(() => AccessIconsDb.UpdateData(_secondHealth16.SetCopy()));
     }
 
     [TestMethod]
@@ -513,9 +513,9 @@ public class DbTests
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_firstHealth16));
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_secondHealth16));
 
-        Assert.AreEqual(1, AccessIconsDb.UpdateData(_thirdHealth16, 0));
+        Assert.AreEqual(1, AccessIconsDb.UpdateData(_thirdHealth16.SetCopy(0)));
         Assert.AreEqual(_thirdHealth16.Data, AccessIconsDb.GetData(_firstHealth16.NullDataClone()));
-        Assert.AreEqual(_secondHealth16.Data, AccessIconsDb.GetData(_firstHealth16.NullDataClone(), 1));
+        Assert.AreEqual(_secondHealth16.Data, AccessIconsDb.GetData(_firstHealth16.NullDataClone().SetCopy(1)));
     }
 
     [TestMethod]
@@ -524,9 +524,9 @@ public class DbTests
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_firstHealth16));
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_secondHealth16));
 
-        Assert.AreEqual(1, AccessIconsDb.UpdateData(_thirdHealth16, 1));
+        Assert.AreEqual(1, AccessIconsDb.UpdateData(_thirdHealth16.SetCopy(1)));
         Assert.AreEqual(_firstHealth16.Data, AccessIconsDb.GetData(_firstHealth16.NullDataClone()));
-        Assert.AreEqual(_thirdHealth16.Data, AccessIconsDb.GetData(_firstHealth16.NullDataClone(), 1));
+        Assert.AreEqual(_thirdHealth16.Data, AccessIconsDb.GetData(_firstHealth16.NullDataClone().SetCopy(1)));
     }
 
     [TestMethod]
@@ -553,7 +553,7 @@ public class DbTests
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_firstHealth16));
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_secondHealth16));
 
-        Assert.AreEqual(-2, AccessIconsDb.UpdateData(_firstHealth16, 1));
+        Assert.AreEqual(-2, AccessIconsDb.UpdateData(_firstHealth16.SetCopy(1)));
     }
 
     [TestMethod]
@@ -562,7 +562,7 @@ public class DbTests
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_firstHealth16));
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_secondHealth16));
 
-        Assert.AreEqual(-2, AccessIconsDb.UpdateData(_secondHealth16, 0));
+        Assert.AreEqual(-2, AccessIconsDb.UpdateData(_secondHealth16.SetCopy(0)));
     }
 
     [TestMethod]
@@ -571,9 +571,9 @@ public class DbTests
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_firstHealth16));
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_secondHealth16));
 
-        Assert.AreEqual(0, AccessIconsDb.UpdateData(_firstHealth16, 0));
-        Assert.AreEqual(0, AccessIconsDb.UpdateData(_secondHealth16, 1));
-        Assert.AreEqual(-3, AccessIconsDb.UpdateData(_thirdHealth16, 2));
+        Assert.AreEqual(0, AccessIconsDb.UpdateData(_firstHealth16.SetCopy(0)));
+        Assert.AreEqual(0, AccessIconsDb.UpdateData(_secondHealth16.SetCopy(1)));
+        Assert.AreEqual(-3, AccessIconsDb.UpdateData(_thirdHealth16.SetCopy(2)));
     }
 
     // REMOVE ----------------
