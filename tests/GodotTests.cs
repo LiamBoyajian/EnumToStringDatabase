@@ -5,6 +5,7 @@ using Main.main.scripts.core.plants;
 using Microsoft.Data.Sqlite;
 using static GdUnit4.Assertions;
 using GdUnit4;
+using Godot;
 
 namespace Main.addons.EnumToIcon.EnumToStringDatabase.tests;
 
@@ -55,6 +56,14 @@ public class GodotTests
         command.ExecuteNonQuery();
     }
 
+    [AfterTest]
+    public void TearDown()
+    {
+        // Truncate SQLite test tables or clear static collections
+        AccessIconsDb.ClearDatabase();
+        _godotMemory.ClearCache();
+    }
+
     [After]
     public void ClassCleanupGd()
     {
@@ -74,6 +83,17 @@ public class GodotTests
     // TESTING MemoryToDb
     //--------------------------------------------------
 
+    [TestCase]
+    public void InitFromDir()
+    {
+        Console.WriteLine();
+        File.Create(_godotMemory.GetGlobalPathConcat(_health16.ToString()));
+        File.Create(_godotMemory.GetGlobalPathConcat(_secondHealth16.ToString()));
+        File.Create(_godotMemory.GetGlobalPathConcat(_chlorophyll16.ToString()));
+        _godotMemory.ValidateIconDirectory();
+        AssertInt(_godotMemory.InitializeFromDirectory(_godotMemory.GlobalFolderPath)).IsEqual(3);
+    }
+
 
     [TestCase]
     public void PutData()
@@ -81,12 +101,50 @@ public class GodotTests
         AssertBool(_godotMemory.PutData(_health16)).IsTrue();
     }
 
+
     [TestCase]
     public void RequestData()
     {
         AssertBool(_godotMemory.PutData(_health16)).IsTrue();
 
         AssertObject(_godotMemory.RequestData(_health16)).IsEqual(_health16);
+    }
+
+    [TestCase]
+    public void RequestDataCacheMiss()
+    {
+        AssertBool(_godotMemory.PutData(_health16)).IsTrue();
+        _godotMemory.ClearCache();
+        AssertObject(_godotMemory.RequestData(_health16)).IsEqual(_health16);
+    }
+
+    [TestCase]
+    public void RequestDataDoesNotExist()
+    {
+        AssertObject(_godotMemory.RequestData(_health16)).IsEqual(null);
+    }
+
+    [TestCase]
+    public void RequestDataNegCopy()
+    {
+        AssertObject(_godotMemory.RequestData(_health16.CloneSetCopy(-1))).IsEqual(null);
+    }
+
+    [TestCase]
+    public void RequestDataWildcard()
+    {
+        AssertBool(_godotMemory.PutData(_health16)).IsTrue();
+
+        AssertObject(_godotMemory.RequestData(_health16.NullDataClone(), true)).IsEqual(_health16);
+    }
+
+    [TestCase]
+    public void RequestDataWildcardAlternatives()
+    {
+        AssertBool(_godotMemory.PutData(_health16)).IsTrue();
+        AssertBool(_godotMemory.PutData(_secondHealth16)).IsTrue();
+
+        AssertObject(_godotMemory.RequestData(_secondHealth16.NullDataClone(), true)).IsEqual(_health16);
     }
 
     [TestCase]
@@ -117,6 +175,6 @@ public class GodotTests
         AssertBool(_godotMemory.PutData(_secondHealth16)).IsTrue();
         AssertBool(_godotMemory.PutData(_chlorophyll16)).IsTrue();
 
-        AssertObject(_godotMemory.RequestData(_secondHealth16.NullDataClone(), 1)).IsEqual(_health16);
+        AssertObject(_godotMemory.RequestData(_secondHealth16.NullDataClone(), true)).IsEqual(_health16);
     }
 }

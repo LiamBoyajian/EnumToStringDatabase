@@ -16,59 +16,76 @@ public partial class MemoryToDb : Node
 {
     public List<Entry> Data;
     public Node Instance;
-    //[Export] protected string IconFolderPath = "res://main/sprites/Icons/";
+    public string FolderPath = "res://main/sprites/Icons/";
+    public string GlobalFolderPath;
 
     public override void _Ready()
     {
+        GlobalFolderPath = ProjectSettings.GlobalizePath(FolderPath);
         base._Ready();
         Data = new List<Entry>();
+        //ValidateIconDirectory();
+        Instance = this;
+    }
+
+    public string GetGlobalPathConcat(string fileName)
+    {
+        return ProjectSettings.GlobalizePath(FolderPath + fileName);
+    }
+
+    public void ValidateIconDirectory()
+    {
         var config = new ConfigFile();
 
-        //string lastEdit = Directory.GetLastWriteTime(IconFolderPath).ToString("yyyy-MM-dd HH:mm:ss");
-//
-        //if (String.CompareOrdinal(config.GetValue("Icons", "LastIconsEditTime").AsString(), lastEdit) != 0)
-        //{
-        //    config.SetValue("Icons", "LastIconsEditTime", lastEdit);
-        //    ClearInitializeDirectory(IconFolderPath);
-        //}
+        string lastEdit = Directory.GetLastWriteTime(GlobalFolderPath).ToString("yyyy-MM-dd HH:mm:ss");
 
-        Instance = this;
+        if (String.CompareOrdinal(config.GetValue("Icons", "LastIconsEditTime").AsString(), lastEdit) != 0)
+        {
+            config.SetValue("Icons", "LastIconsEditTime", lastEdit);
+            AccessIconsDb.ClearDatabase();
+            InitializeFromDirectory(GlobalFolderPath);
+        }
     }
 
 
     /**
      * Initializes
      */
-    public void InitializeFromDirectory(string dir, bool recursive = true)
+    public int InitializeFromDirectory(string dir, bool recursive = true)
     {
         if (dir == null)
-            return;
+            return -1;
+        int result = 0;
+
+        //Files -----------------------
         using var file = Directory.EnumerateFiles(dir).GetEnumerator();
         List<Entry> tempList = new List<Entry>();
         while (file.MoveNext())
         {
-            Type type = Type.GetType(file.Current?.Split()[0] ?? "");
+            var s = file.Current?.GetBaseName();
+            Type type = Type.GetType(s.Split('.')[0] ?? ""); //Potential problem TODO almost 100% this
             if (type is null || !type.IsEnum)
-                continue;
+                continue; //TODO hitting this, so conversion isnt working
 
-            if (Entry.FromString(type, file.Current) is { } entry)
+            if (Entry.FromString(type, s) is { } entry)
+            {
                 tempList.Add(entry);
+                ++result;
+            }
         }
 
+        //Sub-dirs -----------------------
         AccessIconsDb.PutAll(tempList.GetEnumerator());
 
         using var subDirs = Directory.EnumerateDirectories(dir).GetEnumerator();
         while (subDirs.MoveNext())
         {
-            InitializeFromDirectory(subDirs.Current);
+            result += InitializeFromDirectory(subDirs.Current); //Recur -----------------------
         }
-    }
 
-    //public void ClearInitializeDirectory(string dir)
-    //{
-    //    AccessIconsDb.ClearDatabase();
-    //    InitializeFromDirectory(IconFolderPath);
-    //}
+        // -----------------------
+        return result;
+    }
 
 
     /**
@@ -79,29 +96,23 @@ public partial class MemoryToDb : Node
      *
      * Queries the list and returns any found value.
      */
-    public Entry? CheckData(Entry entry, int copy = 0)
+    public Entry? CheckData(Entry entry, bool wildcardSearch = false)
     {
-        if (entry.Enum == null) return null;
-
         foreach (var e in Data)
         {
-            if ()
+            if (wildcardSearch)
+            {
+                if (e.EqualsWildcard(entry))
+                    return e.Clone();
+            }
+            else
+            {
+                if (e.Equals(entry))
+                    return e.Clone();
+            }
         }
 
-        return;
-    }
-
-    /**
-     * Param: Entry with values to search for.
-     *     Entry.Enum cannot be null
-     *     Entry.Size 0 > to wildcard size; otherwise constrain search to size
-     *     Entry.Data null to wildcard; other constrain search to data
-     *
-     * Queries the list and returns if a value was found.
-     */
-    public bool HasData(Entry entry, int copy = 0)
-    {
-        //TODO
+        return null;
     }
 
     /**
@@ -114,23 +125,22 @@ public partial class MemoryToDb : Node
      *
      * Queries the list, if not contained, queries the database. If found, adds to the list.
      */
-    public Entry? RequestData(Entry entry, int copy = 0)
+    public Entry? RequestData(Entry entry, bool wildcardSearch = false)
     {
-        if (copy < 0) return null;
+        if (entry.Copy < 0) return null;
         Entry? result;
-        if (copy == 0)
+        if (entry.Copy == 0)
         {
-            result = CheckData(entry, copy);
+            result = CheckData(entry, wildcardSearch);
             if (result != null)
                 return result;
         }
 
-        //TODO
-        result = AccessIconsDb.GetEntry(entry, copy);
+        result = AccessIconsDb.GetEntry(entry);
         if (result == null)
             return null;
 
-        Data.Add(result.GetHashCode(), result);
+        Data.Add((Entry)result);
 
         return result;
     }

@@ -13,9 +13,9 @@ namespace Main.addons.EnumToIcon.EnumToStringDatabase.main;
 *     Entry.Enum (null) to wildcard if method allows it
 *     Entry.Size (0 >) to wildcard size; otherwise constrain search to size
 *     Entry.Data (null) to wildcard; other constrain search to data
-*     Entry.Copy (0 >) to wildcard; other constrain search to data TODO reimplement methods using
+*     Entry.Copy (0 >) to wildcard; other constrain search to data
 */
-public struct Entry(Enum @enum = null, int size = -1, string data = null, int copy = -1)
+public struct Entry(Enum @enum = null, int size = -1, string data = null, int copy = 0)
 {
     public Enum @Enum { get; set; } = @enum;
     public string Data { get; set; } = data;
@@ -33,6 +33,11 @@ public struct Entry(Enum @enum = null, int size = -1, string data = null, int co
         return @Enum.GetType().Name;
     }
 
+    public string GetEnumFullName()
+    {
+        return @Enum.GetType().FullName;
+    }
+
     public void GenVariables(out Enum @enum, out int size, out string data, out int copy)
     {
         @enum = @Enum;
@@ -43,12 +48,12 @@ public struct Entry(Enum @enum = null, int size = -1, string data = null, int co
 
     public Entry NullDataClone()
     {
-        return new Entry(Enum, Size, null);
+        return new Entry(Enum, Size);
     }
 
     public Entry EnumDataClone()
     {
-        return new Entry(@Enum, -1, null);
+        return new Entry(@Enum);
     }
 
 
@@ -56,23 +61,24 @@ public struct Entry(Enum @enum = null, int size = -1, string data = null, int co
     {
         if (obj == (object)this) return true;
         if (obj is not Entry entry) return false;
-        if (entry.Enum != Enum) return false;
+        if (!Equals(entry.Enum, Enum)) return false;
         if (entry.Size != Size) return false;
-        if (String.CompareOrdinal(entry.Data, Data) != 0) return false;
+        if (entry.Copy != Copy) return false;
+        if (string.CompareOrdinal(entry.Data, Data) != 0) return false;
 
         return true;
     }
 
     /**
-     * Compares entries but does not constrain if a field is a wildcard value
+     * Alternate .equals that does compare a field if the argument entry's field is a wildcard. Will evaluaate all other fields as normal.
      */
-    public bool EqualsFuzzy(object obj)
+    public bool EqualsWildcard(object obj)
     {
         if (obj == (object)this) return true;
         if (obj is not Entry entry) return false;
-        if (entry.Enum != Enum && entry.Enum != null) return false;
+        if (!Equals(entry.Enum, Enum) && entry.Enum != null) return false;
         if (entry.Size != Size && entry.Size >= 0) return false;
-        if (String.CompareOrdinal(entry.Data, Data) != 0 && entry.Data != null) return false;
+        if (string.CompareOrdinal(entry.Data, Data) != 0 && entry.Data != null) return false;
         if (entry.Copy != Copy && entry.Copy >= 0) return false;
 
         return true;
@@ -80,9 +86,19 @@ public struct Entry(Enum @enum = null, int size = -1, string data = null, int co
 
     public override string ToString()
     {
-        return $"{GetEnumName()}.{GetOrdinal()}.{Size}.{Data ?? ""}";
+        var result = "";
+        result += $"{GetEnumFullName()}:";
+        result += $"{GetOrdinal()}.";
+        result += $"{Size}.";
+        result += $"{Copy}.";
+        result += $"{Data}";
+        return result;
     }
 
+    /**
+     * Formatting like ToString without the EnumPath
+     *    I.E. EnumOrdinal.Size.Data.
+     */
     public static Entry? FromString(Type enumType, string s)
     {
         if (enumType == null)
@@ -90,23 +106,21 @@ public struct Entry(Enum @enum = null, int size = -1, string data = null, int co
         if (s == null)
             throw new ArgumentNullException(nameof(s));
 
-
-        if (!enumType.IsEnum)
-            return null;
-
-        var split = s.Split('.');
+        var enumString = s.Split(':');
+        var split = enumString[1].Split('.');
 
         Entry result = new Entry();
 
-        int ordinal = Convert.ToInt32(split[1]);
+        int ordinal = Convert.ToInt32(split[0]);
 
         result.@Enum = (Enum)Enum.ToObject(enumType, ordinal);
 
-        result.Size = Convert.ToInt32(split[2]);
-        if (result.Size < 0)
-            return null;
+        result.Size = Convert.ToInt32(split[1]);
+
+        result.Copy = Convert.ToInt32(split[2]);
 
         result.Data = split[3];
+
 
         return result;
     }
@@ -125,10 +139,21 @@ public struct Entry(Enum @enum = null, int size = -1, string data = null, int co
      * Setter
      * Optional Param: if empty will default to (wildcard) (-1)
      */
-    public Entry SetCopy(int copy = -1)
+    public Entry CloneSetCopy(int copy = -1)
     {
-        Copy = copy;
-        return this;
+        Entry result = Clone();
+        result.Copy = copy;
+        return result;
+    }
+
+    public Entry Clone()
+    {
+        Entry result = new Entry();
+        result.Enum = @Enum;
+        result.Size = Size;
+        result.Data = Data;
+        result.Copy = Copy;
+        return result;
     }
 }
 
@@ -291,8 +316,6 @@ public class AccessIconsDb
      */
     public static bool PutEntry(Entry entry)
     {
-        if (entry.Data == null || entry.Size < 0 || entry.Enum == null)
-            return false;
         using var connection = new SqliteConnection($"Data Source={DbData};");
         return _putEntry(entry, connection);
     }
