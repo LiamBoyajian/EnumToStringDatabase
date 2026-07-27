@@ -13,6 +13,7 @@ namespace Main.addons.EnumToIcon.EnumToStringDatabase.tests;
 public class GodotTests
 {
     private string _tempDbPath;
+    private string _tempDirPath;
     private SqliteConnection _connection;
     private MemoryToDb _godotMemory;
 
@@ -36,8 +37,11 @@ public class GodotTests
 
         AccessIconsDb.DbData = _tempDbPath;
 
+        _tempDirPath = Path.Combine(Path.GetTempPath(), "GodotTest_" + Guid.NewGuid().ToString("N"));
         _godotMemory = AutoFree(new MemoryToDb());
         _godotMemory?._Ready();
+        if (_godotMemory != null)
+            _godotMemory.FolderPath = _tempDirPath;
 
         _health16 = new Entry(AbstractPlant.Rt.Health, 16, "EXAMPLE");
         _secondHealth16 = new Entry(AbstractPlant.Rt.Health, 16, "EXAMPLE2");
@@ -72,6 +76,14 @@ public class GodotTests
         SqliteConnection.ClearAllPools();
         if (File.Exists(_tempDbPath))
             File.Delete(_tempDbPath);
+
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+
+        if (Directory.Exists(_tempDirPath))
+        {
+            Directory.Delete(_tempDirPath, recursive: true);
+        }
     }
 
     [TestCase]
@@ -79,19 +91,30 @@ public class GodotTests
     {
     }
 
+    [TestCase]
+    public void CreateTestDirWorks()
+    {
+        File.Create(_godotMemory.GetGlobalPathConcat(_health16.NullDataClone().ToString()));
+        File.Create(_godotMemory.GetGlobalPathConcat(_secondHealth16.NullDataClone().ToString()));
+        File.Create(_godotMemory.GetGlobalPathConcat(_chlorophyll16.NullDataClone().ToString()));
+        AssertBool(File.Exists(_godotMemory.GetGlobalPathConcat(_health16.ToString()))).IsTrue();
+        AssertBool(File.Exists(_godotMemory.GetGlobalPathConcat(_secondHealth16.ToString()))).IsTrue();
+        AssertBool(File.Exists(_godotMemory.GetGlobalPathConcat(_chlorophyll16.ToString()))).IsTrue();
+    }
+
     //--------------------------------------------------
     // TESTING MemoryToDb
     //--------------------------------------------------
 
+
     [TestCase]
     public void InitFromDir()
     {
-        Console.WriteLine();
-        File.Create(_godotMemory.GetGlobalPathConcat(_health16.ToString()));
-        File.Create(_godotMemory.GetGlobalPathConcat(_secondHealth16.ToString()));
-        File.Create(_godotMemory.GetGlobalPathConcat(_chlorophyll16.ToString()));
-        _godotMemory.ValidateIconDirectory();
-        AssertInt(_godotMemory.InitializeFromDirectory(_godotMemory.GlobalFolderPath)).IsEqual(3);
+        File.Create(_godotMemory.GetGlobalPathConcat(_health16.NullDataClone().ToString())).Close();
+        File.Create(_godotMemory.GetGlobalPathConcat(_secondHealth16.NullDataClone().ToString())).Close();
+        File.Create(_godotMemory.GetGlobalPathConcat(_chlorophyll16.NullDataClone().ToString())).Close();
+
+        AssertInt(_godotMemory.ValidateIconDirectory()).IsEqual(3);
     }
 
 

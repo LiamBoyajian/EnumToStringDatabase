@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing;
 using System.IO;
 using Godot;
@@ -21,7 +22,7 @@ public partial class MemoryToDb : Node
 
     public override void _Ready()
     {
-        GlobalFolderPath = ProjectSettings.GlobalizePath(FolderPath);
+        //GlobalFolderPath = ProjectSettings.GlobalizePath(FolderPath);
         base._Ready();
         Data = new List<Entry>();
         //ValidateIconDirectory();
@@ -33,7 +34,12 @@ public partial class MemoryToDb : Node
         return ProjectSettings.GlobalizePath(FolderPath + fileName);
     }
 
-    public void ValidateIconDirectory()
+    public string GlobalPath()
+    {
+        return ProjectSettings.GlobalizePath(FolderPath);
+    }
+
+    public int ValidateIconDirectory()
     {
         var config = new ConfigFile();
 
@@ -42,9 +48,12 @@ public partial class MemoryToDb : Node
         if (String.CompareOrdinal(config.GetValue("Icons", "LastIconsEditTime").AsString(), lastEdit) != 0)
         {
             config.SetValue("Icons", "LastIconsEditTime", lastEdit);
+
             AccessIconsDb.ClearDatabase();
-            InitializeFromDirectory(GlobalFolderPath);
+            return InitializeFromDirectory(GlobalFolderPath);
         }
+
+        return -1;
     }
 
 
@@ -54,21 +63,18 @@ public partial class MemoryToDb : Node
     public int InitializeFromDirectory(string dir, bool recursive = true)
     {
         if (dir == null)
-            return -1;
+            return 0;
         int result = 0;
 
         //Files -----------------------
-        using var file = Directory.EnumerateFiles(dir).GetEnumerator();
+        var files = Directory.GetFiles(dir);
         List<Entry> tempList = new List<Entry>();
-        while (file.MoveNext())
+        foreach (var f in files)
         {
-            var s = file.Current?.GetBaseName();
-            Type type = Type.GetType(s.Split('.')[0] ?? ""); //Potential problem TODO almost 100% this
-            if (type is null || !type.IsEnum)
-                continue; //TODO hitting this, so conversion isnt working
-
-            if (Entry.FromString(type, s) is { } entry)
+            throw new Exception(f);
+            if (Entry.FromString(f) is { } entry)
             {
+                entry.Data = f;
                 tempList.Add(entry);
                 ++result;
             }

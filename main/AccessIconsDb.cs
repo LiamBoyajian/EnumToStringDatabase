@@ -87,40 +87,40 @@ public struct Entry(Enum @enum = null, int size = -1, string data = null, int co
     public override string ToString()
     {
         var result = "";
-        result += $"{GetEnumFullName()}:";
-        result += $"{GetOrdinal()}.";
-        result += $"{Size}.";
-        result += $"{Copy}.";
+        result += $"{GetEnumFullName()}_";
+        result += $"{GetOrdinal()}_";
+        result += $"{Size}_";
+        result += $"{Copy}_";
         result += $"{Data}";
         return result;
     }
 
     /**
      * Formatting like ToString without the EnumPath
-     *    I.E. EnumOrdinal.Size.Data.
      */
-    public static Entry? FromString(Type enumType, string s)
+    public static Entry? FromString(string s)
     {
-        if (enumType == null)
-            throw new ArgumentNullException(nameof(enumType));
         if (s == null)
             throw new ArgumentNullException(nameof(s));
 
-        var enumString = s.Split(':');
-        var split = enumString[1].Split('.');
+        var split = s.Split('_');
+        Type type = Type.GetType(split[0] ?? "");
+
+        if (type is null || !type.IsEnum)
+            return null;
+
 
         Entry result = new Entry();
 
-        int ordinal = Convert.ToInt32(split[0]);
+        int ordinal = Convert.ToInt32(split[1]);
 
-        result.@Enum = (Enum)Enum.ToObject(enumType, ordinal);
+        result.@Enum = (Enum)Enum.ToObject(type, ordinal);
 
-        result.Size = Convert.ToInt32(split[1]);
+        result.Size = Convert.ToInt32(split[2]);
 
-        result.Copy = Convert.ToInt32(split[2]);
+        result.Copy = Convert.ToInt32(split[3]);
 
-        result.Data = split[3];
-
+        result.Data = split[4];
 
         return result;
     }

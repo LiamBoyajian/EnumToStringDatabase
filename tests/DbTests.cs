@@ -76,35 +76,35 @@ public class DbTests
     [TestMethod]
     public void TestToString()
     {
-        Assert.AreEqual("Main.main.scripts.core.plants.AbstractPlant+Rt:0.16.0.EXAMPLE", _firstHealth16.ToString());
-        Assert.AreEqual("Main.main.scripts.core.plants.AbstractPlant+Rt:1.16.0.EXAMPLE7", _chlorophyll16.ToString());
+        Assert.AreEqual("Main.main.scripts.core.plants.AbstractPlant+Rt_0_16_0_EXAMPLE", _firstHealth16.ToString());
+        Assert.AreEqual("Main.main.scripts.core.plants.AbstractPlant+Rt_1_16_0_EXAMPLE7", _chlorophyll16.ToString());
     }
 
     [TestMethod]
     public void TestNullDataClone()
     {
-        Assert.AreEqual("Main.main.scripts.core.plants.AbstractPlant+Rt:0.16.0.",
+        Assert.AreEqual("Main.main.scripts.core.plants.AbstractPlant+Rt_0_16_0_",
             _firstHealth16.NullDataClone().ToString());
     }
 
     [TestMethod]
     public void TestEnumDataClone()
     {
-        Assert.AreEqual("Main.main.scripts.core.plants.AbstractPlant+Rt:0.-1.0.",
+        Assert.AreEqual("Main.main.scripts.core.plants.AbstractPlant+Rt_0_-1_0_",
             _firstHealth16.EnumDataClone().ToString());
     }
 
     [TestMethod]
     public void FromString()
     {
-        Assert.AreEqual(_firstHealth16, Entry.FromString(typeof(AbstractPlant.Rt), _firstHealth16.ToString()));
+        Assert.AreEqual(_firstHealth16, Entry.FromString(_firstHealth16.ToString()));
     }
 
     [TestMethod]
     public void FromStringAlternateSize()
     {
         Assert.AreEqual(_health32.ToString(),
-            Entry.FromString(typeof(AbstractPlant.Rt), "Main.main.scripts.core.plants.AbstractPlant+Rt:0.32.0.EXAMPLE6")
+            Entry.FromString("Main.main.scripts.core.plants.AbstractPlant+Rt_0_32_0_EXAMPLE6")
                 .ToString());
     }
 
@@ -112,7 +112,7 @@ public class DbTests
     public void FromStringAlternate()
     {
         Assert.AreEqual(_chlorophyll16.ToString(),
-            Entry.FromString(typeof(AbstractPlant.Rt), "Main.main.scripts.core.plants.AbstractPlant+Rt:1.16.0.EXAMPLE7")
+            Entry.FromString("Main.main.scripts.core.plants.AbstractPlant+Rt_1_16_0_EXAMPLE7")
                 .ToString());
     }
 
@@ -120,14 +120,14 @@ public class DbTests
     [TestMethod]
     public void FromStringNullString()
     {
-        Assert.Throws<ArgumentException>(() => Entry.FromString(typeof(AbstractPlant.Rt), null));
+        Assert.Throws<ArgumentException>(() => Entry.FromString(null));
     }
 
     [TestMethod]
-    public void FromStringNullType()
+    public void FromStringbadType()
     {
-        Assert.Throws<ArgumentException>(() =>
-            Entry.FromString(null, "Main.main.scripts.core.plants.AbstractPlant+Rt:0.16.0.EXAMPLE"));
+        Assert.AreEqual(null,
+            Entry.FromString("Main.main.scripts.core.plants.AbstractPlant+FAKEENUMLOL_0_16_0_EXAMPLE"));
     }
 
     [TestMethod]
@@ -146,25 +146,6 @@ public class DbTests
     public void TestEquals()
     {
         Assert.AreEqual(_firstHealth16.Clone(), _firstHealth16);
-    }
-
-    // Type conversion
-
-    [TestMethod]
-    public void TestConversion()
-    {
-        var s = _firstHealth16.ToString();
-        var enumString = s.Split(':')[0];
-        var split = s.Split('.');
-        Type type = Type.GetType(enumString ?? ""); //Potential problem TODO almost 100% this
-
-        if (type is null || !type.IsEnum)
-            throw new AssertFailedException("better?" + split[0]);
-
-        if (Entry.FromString(type, s) is { } entry)
-            Assert.AreEqual(_firstHealth16, entry);
-
-        throw new AssertFailedException("worse?" + type.ToString());
     }
 
     // PUT ----------------
