@@ -7,6 +7,7 @@ using System.IO;
 using Godot;
 using Godot.Collections;
 using Main.addons.EnumToIcon.EnumToStringDatabase.main;
+using Main.main.scripts.core.plants;
 
 namespace Main.addons.EnumToIcon.EnumToStringDatabase;
 
@@ -18,7 +19,7 @@ public partial class MemoryToDb : Node
     public List<Entry> Data;
     public Node Instance;
     public string FolderPath = "res://main/sprites/Icons/";
-    public string GlobalFolderPath;
+    public string GlobalFolderPath => GlobalPath();
 
     public override void _Ready()
     {
@@ -39,21 +40,34 @@ public partial class MemoryToDb : Node
         return ProjectSettings.GlobalizePath(FolderPath);
     }
 
-    public int ValidateIconDirectory()
+    /**
+     * param bool: uses the godot local address; or whatever local address is set
+     */
+    public int ValidateIconDirectory(bool local = false)
     {
+        //Datetime format may not be standard
+        var path = local ? FolderPath : GlobalFolderPath;
+
+        string configPath = Path.Combine(path, "config.cfg");
         var config = new ConfigFile();
+        var err = config.Load(configPath);
 
-        string lastEdit = Directory.GetLastWriteTime(GlobalFolderPath).ToString("yyyy-MM-dd HH:mm:ss");
+        bool unsynced = true;
+        string lastEdit = Directory.GetLastWriteTime(GlobalPath()).ToString("yyyy-MM-dd HH:mm:ss");
 
-        if (String.CompareOrdinal(config.GetValue("Icons", "LastIconsEditTime").AsString(), lastEdit) != 0)
+        if (err == Error.Ok)
+            unsynced = String.CompareOrdinal(config.GetValue("Icons", "LastIconsEditTime").AsString(), lastEdit) != 0;
+
+
+        if (unsynced)
         {
             config.SetValue("Icons", "LastIconsEditTime", lastEdit);
-
+            config.Save(configPath);
             AccessIconsDb.ClearDatabase();
-            return InitializeFromDirectory(GlobalFolderPath);
+            return InitializeFromDirectory(path);
         }
 
-        return -1;
+        return -2;
     }
 
 
@@ -63,16 +77,15 @@ public partial class MemoryToDb : Node
     public int InitializeFromDirectory(string dir, bool recursive = true)
     {
         if (dir == null)
-            return 0;
+            return -1;
         int result = 0;
 
         //Files -----------------------
-        var files = Directory.GetFiles(dir);
+        string[] files = Directory.GetFiles(dir);
         List<Entry> tempList = new List<Entry>();
         foreach (var f in files)
         {
-            throw new Exception(f);
-            if (Entry.FromString(f) is { } entry)
+            if (Entry.FromString(f.GetFile()) is { } entry)
             {
                 entry.Data = f;
                 tempList.Add(entry);
@@ -82,11 +95,13 @@ public partial class MemoryToDb : Node
 
         //Sub-dirs -----------------------
         AccessIconsDb.PutAll(tempList.GetEnumerator());
+        Data.AddRange(tempList);
 
-        using var subDirs = Directory.EnumerateDirectories(dir).GetEnumerator();
-        while (subDirs.MoveNext())
+        var subDirs = Directory.GetDirectories(dir);
+        foreach (var d in subDirs)
         {
-            result += InitializeFromDirectory(subDirs.Current); //Recur -----------------------
+            if (recursive)
+                result += InitializeFromDirectory(d); //Recur -----------------------
         }
 
         // -----------------------

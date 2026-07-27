@@ -19,6 +19,7 @@ public class GodotTests
 
     private Entry _health16;
     private Entry _secondHealth16;
+    private Entry _thirdHealth16;
     private Entry _chlorophyll16;
 
     [Before]
@@ -37,7 +38,9 @@ public class GodotTests
 
         AccessIconsDb.DbData = _tempDbPath;
 
-        _tempDirPath = Path.Combine(Path.GetTempPath(), "GodotTest_" + Guid.NewGuid().ToString("N"));
+        _tempDirPath = Path.Combine(Path.GetTempPath(), "GodotTest_" + Guid.NewGuid().ToString("N")) + "\\";
+        //Directory.CreateDirectory(_tempDbPath);
+
         _godotMemory = AutoFree(new MemoryToDb());
         _godotMemory?._Ready();
         if (_godotMemory != null)
@@ -45,12 +48,15 @@ public class GodotTests
 
         _health16 = new Entry(AbstractPlant.Rt.Health, 16, "EXAMPLE");
         _secondHealth16 = new Entry(AbstractPlant.Rt.Health, 16, "EXAMPLE2");
+        _thirdHealth16 = new Entry(AbstractPlant.Rt.Health, 16, "EXAMPLE3", 1);
         _chlorophyll16 = new Entry(AbstractPlant.Rt.Chlorophyll, 16, "EXAMPLE");
     }
 
     [BeforeTest]
     public void TestInitializeGd()
     {
+        Directory.CreateDirectory(_tempDirPath);
+
         using var command = _connection.CreateCommand();
         command.CommandText = """
                               DELETE FROM IdToFile;
@@ -66,6 +72,11 @@ public class GodotTests
         // Truncate SQLite test tables or clear static collections
         AccessIconsDb.ClearDatabase();
         _godotMemory.ClearCache();
+
+        if (Directory.Exists(_tempDirPath))
+        {
+            Directory.Delete(_tempDirPath, recursive: true);
+        }
     }
 
     [After]
@@ -94,28 +105,19 @@ public class GodotTests
     [TestCase]
     public void CreateTestDirWorks()
     {
-        File.Create(_godotMemory.GetGlobalPathConcat(_health16.NullDataClone().ToString()));
-        File.Create(_godotMemory.GetGlobalPathConcat(_secondHealth16.NullDataClone().ToString()));
-        File.Create(_godotMemory.GetGlobalPathConcat(_chlorophyll16.NullDataClone().ToString()));
-        AssertBool(File.Exists(_godotMemory.GetGlobalPathConcat(_health16.ToString()))).IsTrue();
-        AssertBool(File.Exists(_godotMemory.GetGlobalPathConcat(_secondHealth16.ToString()))).IsTrue();
-        AssertBool(File.Exists(_godotMemory.GetGlobalPathConcat(_chlorophyll16.ToString()))).IsTrue();
+        File.Create(_tempDirPath + _health16.NullDataClone()).Close();
+        File.Create(_tempDirPath + _secondHealth16.NullDataClone()).Close();
+        File.Create(_tempDirPath + _chlorophyll16.NullDataClone()).Close();
+        File.Create(_tempDirPath + _thirdHealth16.NullDataClone()).Close();
+        AssertBool(File.Exists(_tempDirPath + _health16.NullDataClone())).IsTrue();
+        AssertBool(File.Exists(_tempDirPath + _secondHealth16.NullDataClone())).IsTrue(); //Same as previous file
+        AssertBool(File.Exists(_tempDirPath + _thirdHealth16.NullDataClone())).IsTrue();
+        AssertBool(File.Exists(_tempDirPath + _chlorophyll16.NullDataClone())).IsTrue();
     }
 
     //--------------------------------------------------
     // TESTING MemoryToDb
     //--------------------------------------------------
-
-
-    [TestCase]
-    public void InitFromDir()
-    {
-        File.Create(_godotMemory.GetGlobalPathConcat(_health16.NullDataClone().ToString())).Close();
-        File.Create(_godotMemory.GetGlobalPathConcat(_secondHealth16.NullDataClone().ToString())).Close();
-        File.Create(_godotMemory.GetGlobalPathConcat(_chlorophyll16.NullDataClone().ToString())).Close();
-
-        AssertInt(_godotMemory.ValidateIconDirectory()).IsEqual(3);
-    }
 
 
     [TestCase]
@@ -199,5 +201,37 @@ public class GodotTests
         AssertBool(_godotMemory.PutData(_chlorophyll16)).IsTrue();
 
         AssertObject(_godotMemory.RequestData(_secondHealth16.NullDataClone(), true)).IsEqual(_health16);
+    }
+
+    //Initialization
+
+    [TestCase]
+    public void DirNoChangesMade()
+    {
+        _godotMemory.ValidateIconDirectory();
+        AssertInt(_godotMemory.ValidateIconDirectory(true)).IsEqual(-2);
+    }
+
+    [TestCase]
+    public void InitFromDir()
+    {
+        File.Create(_tempDirPath + _health16.NullDataClone()).Close();
+        File.Create(_tempDirPath + _thirdHealth16.NullDataClone()).Close();
+        File.Create(_tempDirPath + _chlorophyll16.NullDataClone()).Close();
+
+        AssertInt(_godotMemory.ValidateIconDirectory(true)).IsEqual(3);
+    }
+
+    [TestCase]
+    public void TestFromInit()
+    {
+        File.Create(_tempDirPath + _health16.NullDataClone()).Close();
+        File.Create(_tempDirPath + _thirdHealth16.NullDataClone()).Close();
+        File.Create(_tempDirPath + _chlorophyll16.NullDataClone()).Close();
+
+        AssertInt(_godotMemory.ValidateIconDirectory(true)).IsEqual(3);
+
+        AssertBool(_health16.NullDataClone().EqualsWildcard(_godotMemory.RequestData(_health16.NullDataClone())))
+            .IsTrue();
     }
 }

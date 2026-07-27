@@ -48,7 +48,7 @@ public struct Entry(Enum @enum = null, int size = -1, string data = null, int co
 
     public Entry NullDataClone()
     {
-        return new Entry(Enum, Size);
+        return new Entry(Enum, Size, null, copy);
     }
 
     public Entry EnumDataClone()
@@ -76,10 +76,10 @@ public struct Entry(Enum @enum = null, int size = -1, string data = null, int co
     {
         if (obj == (object)this) return true;
         if (obj is not Entry entry) return false;
-        if (!Equals(entry.Enum, Enum) && entry.Enum != null) return false;
-        if (entry.Size != Size && entry.Size >= 0) return false;
-        if (string.CompareOrdinal(entry.Data, Data) != 0 && entry.Data != null) return false;
-        if (entry.Copy != Copy && entry.Copy >= 0) return false;
+        if (!Equals(entry.Enum, Enum) && entry.Enum != null && Enum != null) return false;
+        if (entry.Size != Size && entry.Size >= 0 && Size >= 0) return false;
+        if (string.CompareOrdinal(entry.Data, Data) != 0 && entry.Data != null && Data != null) return false;
+        if (entry.Copy != Copy && entry.Copy >= 0 && Copy >= 0) return false;
 
         return true;
     }
