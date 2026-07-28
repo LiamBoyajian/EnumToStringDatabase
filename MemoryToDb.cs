@@ -17,8 +17,9 @@ namespace Main.addons.EnumToIcon.EnumToStringDatabase;
 public partial class MemoryToDb : Node
 {
     public List<Entry> Data;
-    public Node Instance;
+    public static Node Instance { get; private set; }
     public string FolderPath = "res://main/sprites/Icons/";
+    public string[] FileExcludeTokens = { ".import" };
     public string GlobalFolderPath => GlobalPath();
 
     public override void _Ready()
@@ -28,6 +29,12 @@ public partial class MemoryToDb : Node
         Data = new List<Entry>();
         //ValidateIconDirectory();
         Instance = this;
+        AccessIconsDb.InitDb();
+
+        ValidateIconDirectory();
+        var temp = GetEntries(new Entry(), true).GetEnumerator();
+
+        GD.Print("\nWATT: " + AccessIconsDb.DbData);
     }
 
     public string GetGlobalPathConcat(string fileName)
@@ -43,8 +50,10 @@ public partial class MemoryToDb : Node
     /**
      * param bool: uses the godot local address; or whatever local address is set
      */
-    public int ValidateIconDirectory(bool local = false)
+    public int ValidateIconDirectory(bool local = false, string setLocalDirectory = null)
     {
+        if (setLocalDirectory != null)
+            FolderPath = setLocalDirectory;
         //Datetime format may not be standard
         var path = local ? FolderPath : GlobalFolderPath;
 
@@ -58,16 +67,19 @@ public partial class MemoryToDb : Node
         if (err == Error.Ok)
             unsynced = String.CompareOrdinal(config.GetValue("Icons", "LastIconsEditTime").AsString(), lastEdit) != 0;
 
-
+        var result = -2;
         if (unsynced)
         {
-            config.SetValue("Icons", "LastIconsEditTime", lastEdit);
-            config.Save(configPath);
             AccessIconsDb.ClearDatabase();
-            return InitializeFromDirectory(path);
+            result = InitializeFromDirectory(path);
+            if (result > 0)
+            {
+                config.SetValue("Icons", "LastIconsEditTime", lastEdit);
+                config.Save(configPath);
+            }
         }
 
-        return -2;
+        return result;
     }
 
 
@@ -85,7 +97,18 @@ public partial class MemoryToDb : Node
         List<Entry> tempList = new List<Entry>();
         foreach (var f in files)
         {
-            if (Entry.FromString(f.GetFile()) is { } entry)
+            bool containsAnExclusion = false;
+            foreach (var str in FileExcludeTokens)
+            {
+                if (f.Contains(str))
+                    containsAnExclusion = true;
+            }
+
+            if (containsAnExclusion) continue;
+
+            var fromString = f.GetFile();
+
+            if (Entry.FromString(fromString) is { } entry)
             {
                 entry.Data = f;
                 tempList.Add(entry);

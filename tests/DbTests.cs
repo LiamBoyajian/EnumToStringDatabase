@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using Main.addons.EnumToIcon.EnumToStringDatabase.main;
 using Main.main.scripts.core.plants;
@@ -148,6 +149,12 @@ public class DbTests
         Assert.AreEqual(_firstHealth16.Clone(), _firstHealth16);
     }
 
+    [TestMethod]
+    public void TestDefaultConstructor()
+    {
+        Assert.AreEqual("_0_-1_0", (new Entry()).ToString());
+    }
+
     // PUT ----------------
 
     [TestMethod]
@@ -194,6 +201,39 @@ public class DbTests
     {
         Assert.AreEqual(true, AccessIconsDb.PutEntry(_firstHealth16));
         Assert.AreEqual(false, AccessIconsDb.PutEntry(_firstHealth16));
+    }
+
+    //PUT ALL ---------
+    [TestMethod]
+    public void PutAllNone()
+    {
+        List<Entry> temp = new List<Entry>();
+
+        Assert.AreEqual(0, AccessIconsDb.PutAll(temp.GetEnumerator()));
+    }
+
+    [TestMethod]
+    public void PutAll()
+    {
+        List<Entry> temp = new List<Entry>();
+        temp.Add(_firstHealth16);
+        temp.Add(_secondHealth16);
+        temp.Add(_chlorophyll16);
+        Assert.AreEqual(3, AccessIconsDb.PutAll(temp.GetEnumerator()));
+        Assert.AreEqual(3, AccessIconsDb.IconEntryCount(_firstHealth16.EnumDataClone(), true));
+        Assert.AreEqual(false, AccessIconsDb.PutEntry(_firstHealth16));
+    }
+
+    [TestMethod]
+    public void PutAllDupe()
+    {
+        List<Entry> temp = new List<Entry>();
+        temp.Add(_firstHealth16);
+        temp.Add(_firstHealth16);
+        temp.Add(_chlorophyll16);
+        Assert.AreEqual(2, AccessIconsDb.PutAll(temp.GetEnumerator()));
+        Assert.AreEqual(2, AccessIconsDb.IconEntryCount(_firstHealth16.EnumDataClone(), true));
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_secondHealth16));
     }
 
     //ENTRY COUNT --------------
@@ -314,6 +354,15 @@ public class DbTests
         Assert.AreEqual(3, AccessIconsDb.IconEntryCount(_firstHealth16.EnumDataClone(), true));
     }
 
+    [TestMethod]
+    public void TestIconEntryCountDefaultEntry()
+    {
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_firstHealth16));
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_health32));
+        Assert.AreEqual(true, AccessIconsDb.PutEntry(_chlorophyll16));
+
+        Assert.AreEqual(3, AccessIconsDb.IconEntryCount(new Entry(), true));
+    }
     // GET --------------------
 
     [TestMethod]

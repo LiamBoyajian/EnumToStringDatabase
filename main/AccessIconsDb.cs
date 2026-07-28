@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Godot;
 using Microsoft.Data.Sqlite;
 
 namespace Main.addons.EnumToIcon.EnumToStringDatabase.main;
@@ -15,8 +16,12 @@ namespace Main.addons.EnumToIcon.EnumToStringDatabase.main;
 *     Entry.Data (null) to wildcard; other constrain search to data
 *     Entry.Copy (0 >) to wildcard; other constrain search to data
 */
-public struct Entry(Enum @enum = null, int size = -1, string data = null, int copy = 0)
+public struct Entry(Enum @enum = null, int size = -1, string data = null, int copy = 0) : IEquatable<Entry>
 {
+    public Entry() : this(null, -1, null, 0)
+    {
+    }
+
     public Enum @Enum { get; set; } = @enum;
     public string Data { get; set; } = data;
     public int Size { get; set; } = size;
@@ -35,7 +40,7 @@ public struct Entry(Enum @enum = null, int size = -1, string data = null, int co
 
     public string GetEnumFullName()
     {
-        return @Enum.GetType().FullName;
+        return @Enum?.GetType().FullName;
     }
 
     public void GenVariables(out Enum @enum, out int size, out string data, out int copy)
@@ -48,7 +53,7 @@ public struct Entry(Enum @enum = null, int size = -1, string data = null, int co
 
     public Entry NullDataClone()
     {
-        return new Entry(Enum, Size, null, copy);
+        return new Entry(Enum, Size, null, Copy);
     }
 
     public Entry EnumDataClone()
@@ -67,6 +72,13 @@ public struct Entry(Enum @enum = null, int size = -1, string data = null, int co
         if (string.CompareOrdinal(entry.Data, Data) != 0) return false;
 
         return true;
+    }
+
+    public bool Equals(Entry other) => Equals((object)other);
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Enum, Data, Size, Copy);
     }
 
     /**
@@ -108,7 +120,6 @@ public struct Entry(Enum @enum = null, int size = -1, string data = null, int co
 
         if (type is null || !type.IsEnum)
             return null;
-
 
         Entry result = new Entry();
 
@@ -162,6 +173,21 @@ public class AccessIconsDb
     public static string DbData { get; set; } =
         Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "addons", "EnumToIcon", "EnumToStringDatabase", "main",
             "enum_to_directory.db");
+
+    public static string SqliteDeclaration { get; set; } =
+        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "addons", "EnumToIcon", "EnumToStringDatabase", "main",
+            "db_declaration.sql");
+
+    public static void InitDb(string path = null)
+    {
+        if (path != null)
+            DbData = path;
+        using var connection = new SqliteConnection($"Data Source={DbData};");
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = File.ReadAllText(SqliteDeclaration);
+        command.ExecuteNonQuery();
+    }
 
     public AccessIconsDb(string data = null)
     {
