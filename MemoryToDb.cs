@@ -17,7 +17,7 @@ namespace Main.addons.EnumToIcon.EnumToStringDatabase;
 public partial class MemoryToDb : Node
 {
     public List<Entry> Data;
-    public static Node Instance { get; private set; }
+    public static MemoryToDb Instance { get; private set; }
     public string FolderPath = "res://main/sprites/Icons/";
     public string[] FileExcludeTokens = { ".import" };
     public string GlobalFolderPath => GlobalPath();
@@ -45,6 +45,13 @@ public partial class MemoryToDb : Node
     public string GlobalPath()
     {
         return ProjectSettings.GlobalizePath(FolderPath);
+    }
+
+    public static Texture2D GetTextureFromEntry(Entry entry)
+    {
+        var temp = Instance.RequestData(entry)?.Data;
+        var tempTexture = GD.Load<Texture2D>(temp);
+        return tempTexture;
     }
 
     /**
