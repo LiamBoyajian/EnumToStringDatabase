@@ -19,7 +19,7 @@ public partial class MemoryToDb : Node
     public List<Entry> Data;
     public static MemoryToDb Instance { get; private set; }
     public string FolderPath = "res://main/sprites/Icons/";
-    public string[] FileExcludeTokens = { ".import" };
+    public string[] FileExcludeTokens = [".import"];
     public string GlobalFolderPath => GlobalPath();
 
     public override void _Ready()
@@ -32,9 +32,6 @@ public partial class MemoryToDb : Node
         AccessIconsDb.InitDb();
 
         ValidateIconDirectory();
-        var temp = GetEntries(new Entry(), true).GetEnumerator();
-
-        GD.Print("\nWATT: " + AccessIconsDb.DbData);
     }
 
     public string GetGlobalPathConcat(string fileName)
@@ -79,7 +76,7 @@ public partial class MemoryToDb : Node
         {
             AccessIconsDb.ClearDatabase();
             result = InitializeFromDirectory(path);
-            if (result > 0)
+            if (result >= 0)
             {
                 config.SetValue("Icons", "LastIconsEditTime", lastEdit);
                 config.Save(configPath);
@@ -119,12 +116,12 @@ public partial class MemoryToDb : Node
             {
                 entry.Data = f;
                 tempList.Add(entry);
-                ++result;
             }
         }
 
         //Sub-dirs -----------------------
-        AccessIconsDb.PutAll(tempList.GetEnumerator());
+        result += AccessIconsDb.PutAll(tempList.GetEnumerator());
+
         Data.AddRange(tempList);
 
         var subDirs = Directory.GetDirectories(dir);
@@ -140,27 +137,14 @@ public partial class MemoryToDb : Node
 
 
     /**
-     * Param: Entry with values to search for.
-     *     Entry.Enum cannot be null
-     *     Entry.Size 0 > to wildcard size; otherwise constrain search to size
-     *     Entry.Data null to wildcard; other constrain search to data
-     *
      * Queries the list and returns any found value.
      */
-    public Entry? CheckData(Entry entry, bool wildcardSearch = false)
+    public Entry? CheckData(Entry entry)
     {
         foreach (var e in Data)
         {
-            if (wildcardSearch)
-            {
-                if (e.EqualsWildcard(entry))
-                    return e.Clone();
-            }
-            else
-            {
-                if (e.Equals(entry))
-                    return e.Clone();
-            }
+            if (e.EqualsWildcard(entry))
+                return e.Clone();
         }
 
         return null;
@@ -168,32 +152,20 @@ public partial class MemoryToDb : Node
 
     /**
      *
-     * Param: Entry with values to search for.
-     *     Entry.Enum cannot be null
-     *     Entry.Size 0 > to wildcard size; otherwise constrain search to size
-     *     Entry.Data null to wildcard; other constrain search to data
-     * Param: int copies to index through matching entries (enum and size); using the copy param will always check the database
-     *
      * Queries the list, if not contained, queries the database. If found, adds to the list.
      */
-    public Entry? RequestData(Entry entry, bool wildcardSearch = false)
+    public Entry? RequestData(Entry entry)
     {
-        if (entry.Copy < 0) return null;
-        Entry? result;
-        if (entry.Copy == 0)
-        {
-            result = CheckData(entry, wildcardSearch);
-            if (result != null)
-                return result;
-        }
+        if (CheckData(entry) is { } result)
+            return result;
 
-        result = AccessIconsDb.GetEntry(entry);
-        if (result == null)
+
+        if (AccessIconsDb.GetEntry(entry) is not { } dbResult)
             return null;
 
-        Data.Add((Entry)result);
+        Data.Add(dbResult);
 
-        return result;
+        return dbResult;
     }
 
     /**
@@ -202,7 +174,7 @@ public partial class MemoryToDb : Node
      */
     public bool PutData(Entry entry)
     {
-        return AccessIconsDb.PutEntry(entry);
+        return AccessIconsDb.PutEntry(entry) >= 0;
     }
 
     public void ClearCache()
@@ -213,14 +185,6 @@ public partial class MemoryToDb : Node
 
     /**
      *
-     * Param: Entry with values to search for.
-     *     Entry.Enum cannot be null
-     *     Entry.Size 0 > to wildcard size; otherwise constrain search to size
-     *     Entry.Data null to wildcard; other constrain search to data
-     * Param: bool allOfType to obtain all entries matching only the enum type.
-     *
-     * Returns an enumerable that holds any matching entries.
-     * Does not query the list.
      */
     public IEnumerable<Entry> GetEntries(Entry entry, bool allOfType = false)
     {

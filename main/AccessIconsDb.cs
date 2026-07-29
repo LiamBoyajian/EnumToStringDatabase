@@ -16,11 +16,21 @@ namespace Main.addons.EnumToIcon.EnumToStringDatabase.main;
 *     Entry.Data (null) to wildcard; other constrain search to data
 *     Entry.Copy (0 >) to wildcard; other constrain search to data
 */
-public struct Entry(Enum @enum = null, int size = -1, string data = null, int copy = 0) : IEquatable<Entry>
+public struct Entry(
+    Enum @enum = Entry.EnumWildcard,
+    int size = Entry.SizeWildcard,
+    string data = Entry.DataWildcard,
+    int copy = Entry.CopyWildcard) : IEquatable<Entry>
 {
-    public Entry() : this(null, -1, null, 0)
+    //If this is missing the size and copy values are set to 0.
+    public Entry() : this(Entry.EnumWildcard, Entry.SizeWildcard, Entry.DataWildcard, Entry.CopyWildcard)
     {
     }
+
+    public const Enum EnumWildcard = null;
+    public const int SizeWildcard = -1; // less than 0
+    public const string DataWildcard = null;
+    public const int CopyWildcard = -1; // less than 0
 
     public Enum @Enum { get; set; } = @enum;
     public string Data { get; set; } = data;
@@ -51,17 +61,6 @@ public struct Entry(Enum @enum = null, int size = -1, string data = null, int co
         copy = Copy;
     }
 
-    public Entry NullDataClone()
-    {
-        return new Entry(Enum, Size, null, Copy);
-    }
-
-    public Entry EnumDataClone()
-    {
-        return new Entry(@Enum);
-    }
-
-
     public override bool Equals(object obj)
     {
         if (obj == (object)this) return true;
@@ -88,10 +87,11 @@ public struct Entry(Enum @enum = null, int size = -1, string data = null, int co
     {
         if (obj == (object)this) return true;
         if (obj is not Entry entry) return false;
-        if (!Equals(entry.Enum, Enum) && entry.Enum != null && Enum != null) return false;
-        if (entry.Size != Size && entry.Size >= 0 && Size >= 0) return false;
-        if (string.CompareOrdinal(entry.Data, Data) != 0 && entry.Data != null && Data != null) return false;
-        if (entry.Copy != Copy && entry.Copy >= 0 && Copy >= 0) return false;
+        if (!Equals(entry.Enum, Enum) && entry.Enum != EnumWildcard && Enum != EnumWildcard) return false;
+        if (entry.Size != Size && entry.Size > SizeWildcard && Size > SizeWildcard) return false;
+        if (string.CompareOrdinal(entry.Data, Data) != 0 && entry.Data != DataWildcard &&
+            Data != DataWildcard) return false;
+        if (entry.Copy != Copy && entry.Copy > CopyWildcard && Copy > CopyWildcard) return false;
 
         return true;
     }
@@ -146,17 +146,8 @@ public struct Entry(Enum @enum = null, int size = -1, string data = null, int co
         return !(left == right);
     }
 
-    /**
-     * Setter
-     * Optional Param: if empty will default to (wildcard) (-1)
-     */
-    public Entry CloneSetCopy(int copy = -1)
-    {
-        Entry result = Clone();
-        result.Copy = copy;
-        return result;
-    }
 
+    //CLONES
     public Entry Clone()
     {
         Entry result = new Entry();
@@ -166,6 +157,99 @@ public struct Entry(Enum @enum = null, int size = -1, string data = null, int co
         result.Copy = Copy;
         return result;
     }
+
+    /**
+    * Returns a copy with all values wildcarded except Copy
+    */
+    public Entry CopyClone(int copy)
+    {
+        return new Entry(EnumWildcard, SizeWildcard, DataWildcard, copy);
+    }
+
+    public Entry CopyClone() => CopyClone(Copy);
+
+    /**
+     * Returns a copy with all values wildcarded except Size
+     */
+    public Entry SizeClone(int size)
+    {
+        return new Entry(EnumWildcard, size, DataWildcard, CopyWildcard);
+    }
+
+    public Entry SizeClone() => SizeClone(Size);
+
+
+    /**
+     * Returns a copy with all values wildcarded except Size
+     */
+    public Entry EnumClone(Enum @enum)
+    {
+        return new Entry(@enum, SizeWildcard, DataWildcard, CopyWildcard);
+    }
+
+    public Entry EnumClone() => EnumClone(Enum);
+
+    /**
+     * Returns a copy with all values wildcarded except Size
+     */
+    public Entry DataClone(string data)
+    {
+        return new Entry(EnumWildcard, SizeWildcard, data, CopyWildcard);
+    }
+
+    public Entry DataClone() => DataClone(Data);
+
+    /**
+     * Returns a copy with Enum wildcarded
+     */
+    public Entry EnumWildcardClone() => EnumWildcardClone(EnumWildcard);
+
+    /**
+     * Returns a copy with Enum as param
+     */
+    public Entry EnumWildcardClone(Enum @enum)
+    {
+        return new Entry(@enum, Size, Data, Copy);
+    }
+
+    /**
+     * Returns a copy with size wildcarded
+     */
+    public Entry SizeWildcardClone() => SizeWildcardClone(SizeWildcard);
+
+    /**
+     * Returns a copy with size as param
+     */
+    public Entry SizeWildcardClone(int size)
+    {
+        return new Entry(Enum, size, Data, Copy);
+    }
+
+    /**
+     * Returns a copy with data wildcarded
+     */
+    public Entry DataWildcardClone() => DataWildcardClone(DataWildcard);
+
+    /**
+     * Returns a copy with data as param
+     */
+    public Entry DataWildcardClone(string data)
+    {
+        return new Entry(Enum, Size, data, Copy);
+    }
+
+    /**
+     * Returns a copy with copy wildcarded
+     */
+    public Entry CopyWildcardClone() => CopyWildcardClone(CopyWildcard);
+
+    /**
+     * Returns a copy with copy as param
+     */
+    public Entry CopyWildcardClone(int copy)
+    {
+        return new Entry(@Enum, Size, Data, copy);
+    }
 }
 
 public class AccessIconsDb
@@ -174,19 +258,28 @@ public class AccessIconsDb
         Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "addons", "EnumToIcon", "EnumToStringDatabase", "main",
             "enum_to_directory.db");
 
-    public static string SqliteDeclaration { get; set; } =
+    private static string SqliteDeclaration { get; set; } =
         Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "addons", "EnumToIcon", "EnumToStringDatabase", "main",
             "db_declaration.sql");
 
-    public static void InitDb(string path = null)
+    public static void InitDb(SqliteConnection connection = null, string path = null)
     {
         if (path != null)
             DbData = path;
-        using var connection = new SqliteConnection($"Data Source={DbData};");
+
+        bool connectionWasNull = false;
+        if (connection == null)
+        {
+            connectionWasNull = true;
+            connection = new SqliteConnection($"Data Source={DbData};");
+        }
+
         connection.Open();
         using var command = connection.CreateCommand();
         command.CommandText = File.ReadAllText(SqliteDeclaration);
         command.ExecuteNonQuery();
+        if (connectionWasNull)
+            connection.Close();
     }
 
     public AccessIconsDb(string data = null)
@@ -195,82 +288,41 @@ public class AccessIconsDb
             DbData = data;
     }
 
-    public static string GetData(Enum @enum, int copy = 0)
-    {
-        if (copy < 0)
-            throw new ArgumentException("copy is < 0");
-
-        using var connection = new SqliteConnection($"Data Source={DbData};");
-        connection.Open();
-        var reader = _iconEntries(new Entry(@enum), connection).ExecuteReader();
-        if (reader is not { HasRows: true })
-            return null;
-
-        int index = 0;
-        while (reader.Read())
-        {
-            if (index == copy)
-                return reader.GetString(reader.GetOrdinal("Data"));
-            ++index;
-        }
-
-        return null;
-    }
-
     public static Entry? GetEntry(Entry entry)
     {
         if (entry.Enum == null)
             throw new ArgumentNullException(nameof(entry.Enum));
-        if (entry.Copy < 0)
-            throw new ArgumentException("entry.Copy is < 0");
 
         using var connection = new SqliteConnection($"Data Source={DbData};");
         connection.Open();
-        var reader = _iconEntries(entry, connection).ExecuteReader();
+        var reader = _getEntries(entry, connection).ExecuteReader();
         if (reader is not { HasRows: true })
             return null;
+        reader.Read();
 
-        int index = 0;
-        while (reader.Read())
-        {
-            if (index == entry.Copy)
-            {
-                Entry result = new Entry();
-                result.Data = reader.GetString(reader.GetOrdinal("Data"));
-                result.Size = reader.GetInt32(reader.GetOrdinal("Size"));
-                result.Enum = entry.Enum;
-                return result;
-            }
-
-            ++index;
-        }
-
-        return null;
+        Entry result = new Entry();
+        result.Copy = reader.GetInt32(reader.GetOrdinal("Copy"));
+        result.Data = reader.GetString(reader.GetOrdinal("Data"));
+        result.Size = reader.GetInt32(reader.GetOrdinal("Size"));
+        result.Enum = entry.Enum;
+        return result;
     }
 
     /**
      * [Param]: An enum to check against the database
+     *      entry.data is automatically set to wildcard
      */
     public static string GetData(Entry entry)
     {
-        if (entry.Copy < 0)
-            throw new ArgumentException("entry.Copy is < 0");
-
         using var connection = new SqliteConnection($"Data Source={DbData};");
         connection.Open();
-        var reader = _iconEntries(entry, connection).ExecuteReader();
+        var reader = _getEntries(entry.DataWildcardClone(), connection).ExecuteReader();
         if (reader is not { HasRows: true })
             return null;
 
-        int index = 0;
-        while (reader.Read())
-        {
-            if (index == entry.Copy)
-                return reader.GetString(reader.GetOrdinal("Data"));
-            ++index;
-        }
+        reader.Read();
 
-        return null;
+        return reader.GetString(reader.GetOrdinal("Data"));
     }
 
     /**
@@ -287,7 +339,7 @@ public class AccessIconsDb
         using var connection = new SqliteConnection($"Data Source={DbData};");
         connection.Open();
         entry.Data = null;
-        var reader = _iconEntries(entry, connection).ExecuteReader();
+        var reader = _getEntries(entry, connection).ExecuteReader();
         if (reader is not { HasRows: true })
             return false;
 
@@ -302,18 +354,20 @@ public class AccessIconsDb
         return false; //has at least one matching row
     }
 
+
     public static IEnumerable<Entry> GetAllData(Entry entry, bool allOfType = false)
     {
         if (entry.Enum == null)
             throw new ArgumentNullException(nameof(entry.Enum));
         using var connection = new SqliteConnection($"Data Source={DbData};");
         connection.Open();
-        var reader = _iconEntries(entry, connection, allOfType).ExecuteReader();
+        var reader = _getEntries(entry, connection, allOfType).ExecuteReader();
 
         while (reader is { HasRows: true })
         {
             Entry result = new Entry();
 
+            result.Copy = reader.GetInt32(reader.GetOrdinal("Copy"));
             result.Data = reader.GetString(reader.GetOrdinal("Data"));
             result.Size = reader.GetInt32(reader.GetOrdinal("Size"));
             result.Enum = entry.Enum;
@@ -328,7 +382,7 @@ public class AccessIconsDb
         int result = 0;
         while (tempList.MoveNext())
         {
-            if (_putEntry(tempList.Current, connection))
+            if (_putEntry(tempList.Current, connection) >= 0)
                 ++result;
         }
 
@@ -338,15 +392,18 @@ public class AccessIconsDb
     /**
      * Add the given entry into the database.
      * [Param]: entry type to check against the database (string data != null) (size >= 0)
-     * [Returns]: whether the entry was added
+     * [Returns]: the value of the copy found (0 > if not added)
      */
-    public static bool PutEntry(Entry entry)
+    public static int PutEntry(Entry entry)
     {
         using var connection = new SqliteConnection($"Data Source={DbData};");
         return _putEntry(entry, connection);
     }
 
-    public static bool _putEntry(Entry entry, SqliteConnection connection)
+    /**
+     * Returns the value of the copy found (0 > if not added)
+     */
+    public static int _putEntry(Entry entry, SqliteConnection connection)
     {
         entry.GenVariables(out var @enum, out var size, out var data, out var copy);
 
@@ -356,15 +413,62 @@ public class AccessIconsDb
             throw new ArgumentException("size is < 0");
         if (data == null)
             throw new ArgumentException("data is null");
+
         if (connection == null)
             throw new Exception("Established connection was not found");
 
         connection.Open();
 
-        if (String.CompareOrdinal(_getFileAddress(@enum, connection, size), data) == 0)
-            return false;
 
-        var reader = _getValueEnums(@enum, connection).ExecuteReader();
+        //This statement can be simplified into the wildcard if statement; leaving like this to save time.
+        var paramEntryReader = _getEntries(entry.CopyWildcardClone(), connection).ExecuteReader();
+        if (paramEntryReader.HasRows)
+            return -1;
+
+
+        var newCopyValue = -1;
+
+        //Find the lowest, valid copy value
+        if (copy == Entry.CopyWildcard)
+        {
+            int i = 0;
+            using var readerCopies =
+                _getEntries(entry.DataWildcardClone().CopyWildcardClone(), connection).ExecuteReader();
+            while (readerCopies.Read())
+            {
+                var currentCopy = readerCopies.GetInt32(readerCopies.GetOrdinal("Copy"));
+                if (i < currentCopy)
+                {
+                    newCopyValue = i;
+                    break; //Valid gap in copies found
+                }
+
+                ++i;
+            }
+
+            if (newCopyValue < 0)
+                newCopyValue = i;
+        }
+        else
+        {
+            if (_getEntries(entry, connection).ExecuteReader().HasRows)
+                return -1; //Entry already exists
+            newCopyValue = copy;
+        }
+
+        var valueEnums = connection.CreateCommand();
+
+        valueEnums.CommandText = """
+                                 SELECT *
+                                 FROM ValueEnum
+                                 WHERE ValueEnum.ParentEnum = @enum AND (@enumOrdinal < 0 OR ValueEnum.Value = @enumOrdinal); 
+                                 """;
+
+        valueEnums.Parameters.Add(new SqliteParameter("@enum", @enum.GetType().Name));
+        valueEnums.Parameters.Add(new SqliteParameter("@enumOrdinal", Convert.ToInt32(@enum)));
+
+        var reader = valueEnums.ExecuteReader();
+
         int rowKey;
 
         if (reader.HasRows)
@@ -394,72 +498,50 @@ public class AccessIconsDb
         }
 
         using var commandIdToFile = connection.CreateCommand();
-
         commandIdToFile.CommandText = """
-                                      INSERT INTO IdToFile (Size, ParentKey, Data)
-                                      VALUES (@size, @parentKey, @data);
+                                      INSERT INTO IdToFile (Size, ParentKey, Data, Copy)
+                                      VALUES (@size, @parentKey, @data, @copy);
                                       SELECT last_insert_rowid();
                                       """;
         commandIdToFile.Parameters.Add(new SqliteParameter("@size", size));
         commandIdToFile.Parameters.Add(new SqliteParameter("@parentKey", rowKey));
         commandIdToFile.Parameters.Add(new SqliteParameter("@data", data));
+        commandIdToFile.Parameters.Add(new SqliteParameter("@copy", newCopyValue));
 
         rowKey = Convert.ToInt32(commandIdToFile.ExecuteScalar() ?? -1);
         if (rowKey < 0) throw new Exception("IdToFile row was not created");
 
-        return true;
+        return newCopyValue;
     }
 
     /**
-     * param: size > 0
-     * param: copy > 0
-     * returns: (0 no new changes made) (-1 if no target found) (-2 if existing entry has matching values) (-3 copy is greater than available copies)
+     *
+     *
+     * Returns: whether the database was updated
      */
-    public static int UpdateData(Entry entry)
+    public static bool UpdateData(Entry entry)
     {
         entry.GenVariables(out Enum @enum, out int size, out string data, out var copy);
-        if (size < 0)
-            throw new ArgumentException("Size in entry is < 0");
-        if (copy < 0)
-            throw new ArgumentException("copy is < 0");
+
         if (@enum == null)
             throw new ArgumentException("enum is null");
 
         using var connection = new SqliteConnection($"Data Source= {DbData};");
         connection.Open();
 
-        var commandCurrentData = _iconEntries(entry.NullDataClone(), connection);
+        var commandHasData = _getEntries(entry.CopyWildcardClone(), connection);
+        var readerHasData = commandHasData.ExecuteReader();
+        if (readerHasData.Read())
+            return false;
+
+
+        var commandCurrentData = _getEntries(entry.DataWildcardClone(), connection);
         var reader = commandCurrentData.ExecuteReader();
 
-        if (!reader.HasRows)
-            return -1;
+        if (!reader.Read())
+            return false; //no entries to update
 
-
-        int targetId = -1;
-
-        int i = 0;
-        while (reader.Read())
-        {
-            var tempData = reader.GetString(reader.GetOrdinal("Data"));
-
-            if (i == copy)
-            {
-                targetId = reader.GetInt32(reader.GetOrdinal("Id"));
-                if (String.CompareOrdinal(tempData, data) == 0)
-                    return 0;
-            }
-            else
-            {
-                if (String.CompareOrdinal(tempData, data) == 0)
-                    return -2;
-            }
-
-            ++i;
-        }
-
-        if (i == copy)
-            return -3;
-
+        int updateTargetId = reader.GetInt32(reader.GetOrdinal("Id"));
 
         using var command = connection.CreateCommand();
 
@@ -469,9 +551,9 @@ public class AccessIconsDb
                               WHERE Id = @id
                               """;
         command.Parameters.Add(new SqliteParameter("@newData", data));
-        command.Parameters.Add(new SqliteParameter("@id", targetId));
+        command.Parameters.Add(new SqliteParameter("@id", updateTargetId));
 
-        return command.ExecuteNonQuery();
+        return command.ExecuteNonQuery() > 0;
     }
 
     public static int ClearDatabase()
@@ -527,12 +609,13 @@ public class AccessIconsDb
                                                 SELECT Key
                                                 FROM ValueEnum
                                                 WHERE ValueEnum.ParentEnum = @enumName AND (@value < 0 OR ValueEnum.Value = @value)
-                                                ) AND (@size = -1 OR IdToFile.Size = @size) AND (@data IS null OR IdToFile.Data = @data)
+                                                ) AND (@size = -1 OR IdToFile.Size = @size) AND (@data IS null OR IdToFile.Data = @data) AND (@copy < 0 OR IdToFile.Copy = @copy)
                                             )
                                         """;
             removeCommand.Parameters.Add(new SqliteParameter("@value", value));
             removeCommand.Parameters.Add(new SqliteParameter("@size", Convert.ToInt32(entry.Size)));
             removeCommand.Parameters.Add(new SqliteParameter("@data", (object)entry.Data ?? DBNull.Value));
+            removeCommand.Parameters.Add(new SqliteParameter("@copy", entry.Copy));
         }
 
         removeCommand.Parameters.Add(new SqliteParameter("@enumName",
@@ -544,7 +627,7 @@ public class AccessIconsDb
 
     /**
      * [Param]: An enum to check against the database
-     * [Param Optional]: The size to constrain the value to ( must be >= 0 )
+     * [Param Optional]: The size to constrain the value to
      * [Param Overload]: An entry to cast into previous params
      *
      */
@@ -552,9 +635,9 @@ public class AccessIconsDb
     {
         using var connection = new SqliteConnection($"Data Source={DbData};");
         connection.Open();
-        var reader = _iconEntries(entry, connection, allOfType).ExecuteReader();
+        var reader = _getEntries(entry, connection, allOfType).ExecuteReader();
         var result = 0;
-        while (reader.HasRows && reader.Read())
+        while (reader.Read())
         {
             result += 1;
         }
@@ -564,13 +647,10 @@ public class AccessIconsDb
 
     /**
      * Searches for entries in the db that match the given entry.
-     * [Return]: the joined query
-     * [Param]: An enum to check against the database
-     * [Param]: An established connection
-     * [Param Optional]: The size to constrain the value to ( must be >= 0 )
-     * [Param Optional]: Select all entries of enum (non-ordinal)
+     * Returns: the joined query results
+     * Param: [Entry] Searches database for entries with matching field values--excluding any wildcard fields.
      */
-    private static SqliteCommand _iconEntries(Entry entry, SqliteConnection connection, bool allOfType = false)
+    private static SqliteCommand _getEntries(Entry entry, SqliteConnection connection, bool allOfType = false)
     {
         entry.GenVariables(out var @enum, out var size, out var data, out var copy);
 
@@ -602,92 +682,15 @@ public class AccessIconsDb
                                   AND (@enumOrdinal < 0 OR ValueEnum.Value = @enumOrdinal) 
                                   AND (@size < 0 OR IdToFile.Size = @size) 
                                   AND (@data IS null OR IdToFile.Data = @data)
+                                  AND (@copy < 0 OR IdToFile.Copy = @copy);
                               """;
 
         command.Parameters.Add(new SqliteParameter("@enum", (object)@enum?.GetType().Name ?? DBNull.Value));
         command.Parameters.Add(new SqliteParameter("@enumOrdinal", enumOrdinal));
         command.Parameters.Add(new SqliteParameter("@size", size));
         command.Parameters.Add(new SqliteParameter("@data", (object)data ?? DBNull.Value));
+        command.Parameters.Add(new SqliteParameter("@copy", copy));
 
         return command;
-    }
-
-    /**
-     * [Return]: the query
-     * [Param]: An enum to check against the database
-     * [Param]: An established connection
-     * [Param Optional]: Select all entries of enum (non-ordinal)
-     */
-    private static SqliteCommand _getValueEnums(Enum @enum, SqliteConnection connection, bool allOfType = false)
-    {
-        if (connection == null)
-            throw new ArgumentException("connection was null");
-
-        connection.Open();
-
-        if (@enum == null) return null;
-
-
-        int enumOrdinal;
-        if (!allOfType)
-        {
-            enumOrdinal = Convert.ToInt32(@enum);
-        }
-        else
-        {
-            enumOrdinal = -1;
-        }
-
-        var command = connection.CreateCommand();
-
-        command.CommandText = """
-                              SELECT *
-                              FROM ValueEnum
-                              WHERE ValueEnum.ParentEnum = @enum AND (@enumOrdinal < 0 OR ValueEnum.Value = @enumOrdinal); 
-                              """;
-
-        command.Parameters.Add(new SqliteParameter("@enum", @enum.GetType().Name));
-        command.Parameters.Add(new SqliteParameter("@enumOrdinal", enumOrdinal));
-
-        return command;
-    }
-
-    /**
-     * [Return]: the query
-     * [Param]: The size to constrain the value to ( must be >= 0 )
-     * [Param]: An established connection
-     */
-    private static SqliteCommand _getIdToFiles(int size, SqliteConnection connection)
-    {
-        if (connection == null)
-            throw new ArgumentException("connection was null");
-        if (size < 0)
-            throw new ArgumentException("connection was null");
-
-        connection.Open();
-
-        var command = connection.CreateCommand();
-
-        command.CommandText = """
-                              SELECT *
-                              FROM IdToFile
-                              WHERE IdToFile.Size = @size; 
-                              """;
-
-        command.Parameters.Add(new SqliteParameter("@size", size));
-
-        return command;
-    }
-
-    private static string _getFileAddress(Enum @enum, SqliteConnection connection, int size = -1)
-    {
-        connection.Open();
-        var reader = _iconEntries(new Entry(@enum, size, null), connection).ExecuteReader();
-        if (reader is not { HasRows: true })
-            return null;
-
-        reader.Read();
-
-        return reader.GetString(reader.GetOrdinal("Data"));
     }
 }

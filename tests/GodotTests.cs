@@ -20,6 +20,7 @@ public class GodotTests
     private Entry _health16;
     private Entry _secondHealth16;
     private Entry _thirdHealth16;
+    private Entry _health32;
     private Entry _chlorophyll16;
 
     [Before]
@@ -48,7 +49,8 @@ public class GodotTests
 
         _health16 = new Entry(AbstractPlant.Rt.Health, 16, "EXAMPLE");
         _secondHealth16 = new Entry(AbstractPlant.Rt.Health, 16, "EXAMPLE2");
-        _thirdHealth16 = new Entry(AbstractPlant.Rt.Health, 16, "EXAMPLE3", 1);
+        _thirdHealth16 = new Entry(AbstractPlant.Rt.Health, 16, "EXAMPLE3");
+        _health32 = new Entry(AbstractPlant.Rt.Health, 32, "EXAMPLE3");
         _chlorophyll16 = new Entry(AbstractPlant.Rt.Chlorophyll, 16, "EXAMPLE");
     }
 
@@ -105,14 +107,14 @@ public class GodotTests
     [TestCase]
     public void CreateTestDirWorks()
     {
-        File.Create(_tempDirPath + _health16.NullDataClone()).Close();
-        File.Create(_tempDirPath + _secondHealth16.NullDataClone()).Close();
-        File.Create(_tempDirPath + _chlorophyll16.NullDataClone()).Close();
-        File.Create(_tempDirPath + _thirdHealth16.NullDataClone()).Close();
-        AssertBool(File.Exists(_tempDirPath + _health16.NullDataClone())).IsTrue();
-        AssertBool(File.Exists(_tempDirPath + _secondHealth16.NullDataClone())).IsTrue(); //Same as previous file
-        AssertBool(File.Exists(_tempDirPath + _thirdHealth16.NullDataClone())).IsTrue();
-        AssertBool(File.Exists(_tempDirPath + _chlorophyll16.NullDataClone())).IsTrue();
+        File.Create(_tempDirPath + _health16.DataWildcardClone()).Close();
+        File.Create(_tempDirPath + _secondHealth16.DataWildcardClone()).Close();
+        File.Create(_tempDirPath + _chlorophyll16.DataWildcardClone()).Close();
+        File.Create(_tempDirPath + _thirdHealth16.DataWildcardClone()).Close();
+        AssertBool(File.Exists(_tempDirPath + _health16.DataWildcardClone())).IsTrue();
+        AssertBool(File.Exists(_tempDirPath + _secondHealth16.DataWildcardClone())).IsTrue(); //Same as previous file
+        AssertBool(File.Exists(_tempDirPath + _thirdHealth16.DataWildcardClone())).IsTrue();
+        AssertBool(File.Exists(_tempDirPath + _chlorophyll16.DataWildcardClone())).IsTrue();
     }
 
     //--------------------------------------------------
@@ -132,7 +134,7 @@ public class GodotTests
     {
         AssertBool(_godotMemory.PutData(_health16)).IsTrue();
 
-        AssertObject(_godotMemory.RequestData(_health16)).IsEqual(_health16);
+        AssertObject(_godotMemory.RequestData(_health16)).IsEqual(_health16.CopyWildcardClone(0));
     }
 
     [TestCase]
@@ -140,7 +142,7 @@ public class GodotTests
     {
         AssertBool(_godotMemory.PutData(_health16)).IsTrue();
         _godotMemory.ClearCache();
-        AssertObject(_godotMemory.RequestData(_health16)).IsEqual(_health16);
+        AssertObject(_godotMemory.RequestData(_health16)).IsEqual(_health16.CopyWildcardClone(0));
     }
 
     [TestCase]
@@ -152,7 +154,7 @@ public class GodotTests
     [TestCase]
     public void RequestDataNegCopy()
     {
-        AssertObject(_godotMemory.RequestData(_health16.CloneSetCopy(-1))).IsEqual(null);
+        AssertObject(_godotMemory.RequestData(_health16)).IsEqual(null);
     }
 
     [TestCase]
@@ -160,7 +162,7 @@ public class GodotTests
     {
         AssertBool(_godotMemory.PutData(_health16)).IsTrue();
 
-        AssertObject(_godotMemory.RequestData(_health16.NullDataClone(), true)).IsEqual(_health16);
+        AssertObject(_godotMemory.RequestData(_health16.DataWildcardClone())).IsEqual(_health16.CopyWildcardClone(0));
     }
 
     [TestCase]
@@ -169,7 +171,8 @@ public class GodotTests
         AssertBool(_godotMemory.PutData(_health16)).IsTrue();
         AssertBool(_godotMemory.PutData(_secondHealth16)).IsTrue();
 
-        AssertObject(_godotMemory.RequestData(_secondHealth16.NullDataClone(), true)).IsEqual(_health16);
+        AssertObject(_godotMemory.RequestData(_secondHealth16.DataWildcardClone()))
+            .IsEqual(_health16.CopyWildcardClone(0));
     }
 
     [TestCase]
@@ -179,8 +182,8 @@ public class GodotTests
         AssertBool(_godotMemory.PutData(_secondHealth16)).IsTrue();
         AssertBool(_godotMemory.PutData(_chlorophyll16)).IsTrue();
 
-        AssertObject(_godotMemory.RequestData(_health16)).IsEqual(_health16);
-        AssertObject(_godotMemory.CheckData(_health16)).IsEqual(_health16);
+        AssertObject(_godotMemory.RequestData(_health16)).IsEqual(_health16.CopyWildcardClone(0));
+        AssertObject(_godotMemory.CheckData(_health16)).IsEqual(_health16.CopyWildcardClone(0));
     }
 
     [TestCase]
@@ -190,7 +193,8 @@ public class GodotTests
         AssertBool(_godotMemory.PutData(_secondHealth16)).IsTrue();
         AssertBool(_godotMemory.PutData(_chlorophyll16)).IsTrue();
 
-        AssertObject(_godotMemory.RequestData(_secondHealth16.NullDataClone())).IsEqual(_health16);
+        AssertObject(_godotMemory.RequestData(_secondHealth16.DataWildcardClone()))
+            .IsEqual(_health16.CopyWildcardClone(0));
     }
 
     [TestCase]
@@ -200,7 +204,8 @@ public class GodotTests
         AssertBool(_godotMemory.PutData(_secondHealth16)).IsTrue();
         AssertBool(_godotMemory.PutData(_chlorophyll16)).IsTrue();
 
-        AssertObject(_godotMemory.RequestData(_secondHealth16.NullDataClone(), true)).IsEqual(_health16);
+        AssertObject(_godotMemory.RequestData(_secondHealth16.DataWildcardClone()))
+            .IsEqual(_health16.CopyWildcardClone(0));
     }
 
     //Initialization
@@ -208,30 +213,53 @@ public class GodotTests
     [TestCase]
     public void DirNoChangesMade()
     {
-        _godotMemory.ValidateIconDirectory();
+        _godotMemory.ValidateIconDirectory(true);
         AssertInt(_godotMemory.ValidateIconDirectory(true)).IsEqual(-2);
     }
 
     [TestCase]
     public void InitFromDir()
     {
-        File.Create(_tempDirPath + _health16.NullDataClone()).Close();
-        File.Create(_tempDirPath + _thirdHealth16.NullDataClone()).Close();
-        File.Create(_tempDirPath + _chlorophyll16.NullDataClone()).Close();
+        File.Create(_tempDirPath + _health16.DataWildcardClone()).Close();
+        File.Create(_tempDirPath + _health32.DataWildcardClone()).Close();
+        File.Create(_tempDirPath + _chlorophyll16.DataWildcardClone()).Close();
 
         AssertInt(_godotMemory.ValidateIconDirectory(true)).IsEqual(3);
     }
 
     [TestCase]
+    public void InitFromDirDuplicateValues()
+    {
+        File.Create(_tempDirPath + _health16.DataWildcardClone()).Close();
+        File.Create(_tempDirPath + _secondHealth16.DataWildcardClone()).Close();
+        File.Create(_tempDirPath + _chlorophyll16.DataWildcardClone()).Close();
+
+        AssertInt(_godotMemory.ValidateIconDirectory(true)).IsEqual(2);
+    }
+
+    [TestCase]
+    public void InitFromDirExcludeTokens()
+    {
+        _godotMemory.FileExcludeTokens = [".import"];
+
+        File.Create(_tempDirPath + _health16.DataWildcardClone()).Close();
+        File.Create(_tempDirPath + _health32.DataWildcardClone()).Close();
+        File.Create(_tempDirPath + _chlorophyll16.DataWildcardClone() + ".import").Close();
+
+        AssertInt(_godotMemory.ValidateIconDirectory(true)).IsEqual(2);
+    }
+
+    [TestCase]
     public void TestFromInit()
     {
-        File.Create(_tempDirPath + _health16.NullDataClone()).Close();
-        File.Create(_tempDirPath + _thirdHealth16.NullDataClone()).Close();
-        File.Create(_tempDirPath + _chlorophyll16.NullDataClone()).Close();
+        File.Create(_tempDirPath + _health16.DataWildcardClone()).Close();
+        File.Create(_tempDirPath + _health32.DataWildcardClone()).Close();
+        File.Create(_tempDirPath + _chlorophyll16.DataWildcardClone()).Close();
 
         AssertInt(_godotMemory.ValidateIconDirectory(true)).IsEqual(3);
 
-        AssertBool(_health16.NullDataClone().EqualsWildcard(_godotMemory.RequestData(_health16.NullDataClone())))
+        AssertBool(
+                _health16.DataWildcardClone().EqualsWildcard(_godotMemory.RequestData(_health16.DataWildcardClone())))
             .IsTrue();
     }
 }

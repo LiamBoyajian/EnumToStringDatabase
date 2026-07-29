@@ -11,5 +11,6 @@ CREATE TABLE IF NOT EXISTS IdToFile
     Size INTEGER,
     ParentKey INTEGER,
     Data TEXT,
+    Copy INTEGER,
     FOREIGN KEY (ParentKey) REFERENCES ValueEnum (Key) ON DELETE CASCADE
 )
