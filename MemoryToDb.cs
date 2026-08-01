@@ -46,9 +46,11 @@ public partial class MemoryToDb : Node
 
     public static Texture2D GetTextureFromEntry(Entry entry)
     {
-        var temp = Instance.RequestData(entry)?.Data;
-        var tempTexture = GD.Load<Texture2D>(temp);
-        return tempTexture;
+        var path = Instance.RequestData(entry)?.Data;
+        if (path == null || !ResourceLoader.Exists(path))
+            return null;
+
+        return GD.Load<Texture2D>(path);
     }
 
     /**
