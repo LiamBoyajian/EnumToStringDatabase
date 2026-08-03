@@ -9,8 +9,8 @@ using Godot;
 
 namespace Main.addons.EnumToIcon.EnumToStringDatabase.tests;
 
-[TestSuite]
-public class GodotTests
+[TestSuite, RequireGodotRuntime]
+public partial class GodotTests
 {
     private string _tempDbPath;
     private string _tempDirPath;
